@@ -1,0 +1,13 @@
+{
+  "app": "pixvel",
+  "entrypoint": "src/index.ts",
+  "include": [
+    "src/",
+    "frontend/dist/"
+  ],
+  "arguments": ["--unstable-kv"],
+  "deploy": {
+    "org": "dandibbert",
+    "app": "pixvel"
+  }
+}
