@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useReaderStore } from '../../stores/readerStore'
 import { useNovelPagination } from '../../hooks/useNovelPagination'
 import { NovelSeries } from '../../hooks/useNovelDetail'
@@ -12,22 +13,48 @@ interface NovelReaderProps {
 }
 
 export default function NovelReader({ series }: NovelReaderProps) {
+  const navigate = useNavigate()
   const { novel, pages } = useReaderStore()
   const { currentPage, totalPages, goToPage, goToNextPage, goToPrevPage } = useNovelPagination()
+
+  const isOnFirstPage = currentPage === 1
+  const isOnLastPage = totalPages > 0 ? currentPage === totalPages : true
+  const canJumpPrevSeries = isOnFirstPage && !!series?.prev_novel
+  const canJumpNextSeries = isOnLastPage && !!series?.next_novel
+
+  const handlePrev = useCallback(() => {
+    if (canJumpPrevSeries && series?.prev_novel) {
+      navigate(`/novel/${series.prev_novel.id}`)
+      return
+    }
+    if (!isOnFirstPage) {
+      goToPrevPage()
+    }
+  }, [canJumpPrevSeries, series, navigate, isOnFirstPage, goToPrevPage])
+
+  const handleNext = useCallback(() => {
+    if (canJumpNextSeries && series?.next_novel) {
+      navigate(`/novel/${series.next_novel.id}`)
+      return
+    }
+    if (!isOnLastPage) {
+      goToNextPage()
+    }
+  }, [canJumpNextSeries, series, navigate, isOnLastPage, goToNextPage])
 
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') {
-        goToPrevPage()
+        handlePrev()
       } else if (e.key === 'ArrowRight') {
-        goToNextPage()
+        handleNext()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [goToPrevPage, goToNextPage])
+  }, [handlePrev, handleNext])
 
   if (!novel) {
     return null
@@ -50,9 +77,10 @@ export default function NovelReader({ series }: NovelReaderProps) {
         <NovelPageNav
           currentPage={currentPage}
           totalPages={totalPages}
-          onPrevPage={goToPrevPage}
-          onNextPage={goToNextPage}
+          onPrevPage={handlePrev}
+          onNextPage={handleNext}
           onGoToPage={goToPage}
+          series={series}
         />
       </div>
     </div>

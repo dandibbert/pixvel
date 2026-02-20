@@ -589,6 +589,10 @@ novels.get("/:id/series", async (c) => {
       return c.json({ error: "Missing novel ID" }, 400);
     }
 
+    // Optional: Accept series_id and series_title from query params to skip detail call
+    const hintedSeriesId = c.req.query("series_id");
+    const hintedSeriesTitle = c.req.query("series_title") || "";
+
     // Create Pixiv client
     const client = new PixivClient(
       session.accessToken,
@@ -603,19 +607,32 @@ novels.get("/:id/series", async (c) => {
       },
     );
 
-    // First get novel details to check if it has a series
-    const detailResponse = await client.fetch<{
-      novel: Novel;
-    }>(`/v2/novel/detail?novel_id=${novelId}`);
+    const novelIdNumber = parseInt(novelId, 10);
+    let seriesId: number;
+    let seriesTitle = hintedSeriesTitle;
 
-    if (!detailResponse.novel.series) {
-      return c.json(null);
+    // If series_id is provided, skip the detail API call
+    if (hintedSeriesId) {
+      const parsedSeriesId = parseInt(hintedSeriesId, 10);
+      if (isNaN(parsedSeriesId)) {
+        return c.json({ error: "Invalid series_id" }, 400);
+      }
+      seriesId = parsedSeriesId;
+    } else {
+      // Fallback: get novel details to check if it has a series
+      const detailResponse = await client.fetch<{
+        novel: Novel;
+      }>(`/v2/novel/detail?novel_id=${novelId}`);
+
+      if (!detailResponse.novel.series) {
+        return c.json(null);
+      }
+
+      seriesId = detailResponse.novel.series.id;
+      if (!seriesTitle) {
+        seriesTitle = detailResponse.novel.series?.title || "";
+      }
     }
-
-    const seriesId = detailResponse.novel.series.id;
-
-    const novelIdNumber = parseInt(novelId);
-    let seriesTitle = detailResponse.novel.series?.title || "";
     let prevNovel: { id: string; title: string } | null = null;
     let nextNovel: { id: string; title: string } | null = null;
 
@@ -682,6 +699,8 @@ novels.get("/:id/series", async (c) => {
       title: seriesTitle,
       ...(prevNovel ? { prev_novel: prevNovel } : {}),
       ...(nextNovel ? { next_novel: nextNovel } : {}),
+    }, 200, {
+      "Cache-Control": "private, max-age=30",
     });
   } catch (error) {
     console.error("Novel series error:", error);

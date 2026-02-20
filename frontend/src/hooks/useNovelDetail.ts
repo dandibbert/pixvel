@@ -25,13 +25,28 @@ export function useNovelDetail(novelId: string | undefined) {
 
     // Reset scroll position when loading a new novel
     window.scrollTo(0, 0)
+    setSeries(null)
 
     const fetchData = async () => {
       await loadNovel(novelId)
 
+      // Get the loaded novel from store
+      const loadedNovel = useReaderStore.getState().novel
+
+      // If novel has no series, skip series API call
+      if (!loadedNovel?.series?.id) {
+        setSeries(null)
+        return
+      }
+
       try {
         setSeriesLoading(true)
-        const seriesData = await api.get<NovelSeries>(`/novels/${novelId}/series`)
+        // Pass series_id and series_title to skip redundant detail API call
+        const params = new URLSearchParams({
+          series_id: loadedNovel.series.id,
+          series_title: loadedNovel.series.title || '',
+        })
+        const seriesData = await api.get<NovelSeries>(`/novels/${novelId}/series?${params}`)
         setSeries(seriesData)
       } catch (err) {
         setSeries(null)
@@ -41,7 +56,7 @@ export function useNovelDetail(novelId: string | undefined) {
     }
 
     fetchData()
-  }, [novelId])
+  }, [novelId, loadNovel])
 
   // Save to reading history when novel is loaded
   useEffect(() => {

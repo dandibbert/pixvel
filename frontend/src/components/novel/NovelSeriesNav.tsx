@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { NovelSeries } from '../../hooks/useNovelDetail'
 
 interface NovelSeriesNavProps {
@@ -14,8 +15,8 @@ export default function NovelSeriesNav({ series }: NovelSeriesNavProps) {
       <div className="max-w-4xl mx-auto flex items-center justify-between gap-2 md:gap-4">
         <div className="flex-1 min-w-0">
           {series.prev_novel ? (
-            <a
-              href={`/novel/${series.prev_novel.id}`}
+            <Link
+              to={`/novel/${series.prev_novel.id}`}
               className="inline-flex items-center gap-1.5 md:gap-2 px-3 py-2 rounded-lg bg-white border border-border hover:border-primary hover:bg-primary/5 text-xs md:text-sm text-foreground font-semibold min-h-[44px] touch-manipulation transition-all"
               title={series.prev_novel.title}
             >
@@ -33,7 +34,7 @@ export default function NovelSeriesNav({ series }: NovelSeriesNavProps) {
                 />
               </svg>
               <span>上一篇</span>
-            </a>
+            </Link>
           ) : (
             <div className="inline-flex items-center gap-1.5 md:gap-2 px-3 py-2 rounded-lg bg-muted text-xs md:text-sm text-foreground/30 font-semibold">
               <svg
@@ -60,8 +61,8 @@ export default function NovelSeriesNav({ series }: NovelSeriesNavProps) {
 
         <div className="flex-1 text-right min-w-0">
           {series.next_novel ? (
-            <a
-              href={`/novel/${series.next_novel.id}`}
+            <Link
+              to={`/novel/${series.next_novel.id}`}
               className="inline-flex items-center gap-1.5 md:gap-2 px-3 py-2 rounded-lg bg-white border border-border hover:border-primary hover:bg-primary/5 text-xs md:text-sm text-foreground font-semibold min-h-[44px] touch-manipulation transition-all"
               title={series.next_novel.title}
             >
@@ -79,7 +80,7 @@ export default function NovelSeriesNav({ series }: NovelSeriesNavProps) {
                   d="M9 5l7 7-7 7"
                 />
               </svg>
-            </a>
+            </Link>
           ) : (
             <div className="inline-flex items-center gap-1.5 md:gap-2 px-3 py-2 rounded-lg bg-muted text-xs md:text-sm text-foreground/30 font-semibold">
               <span>下一篇</span>
