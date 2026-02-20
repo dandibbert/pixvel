@@ -18,12 +18,15 @@ export default {
         sans: ['Outfit', 'system-ui', 'sans-serif'],
         serif: ['Noto Serif JP', 'serif'],
       },
-      boxShadow: {
-        'none': '0 0 #0000',
-      },
       borderRadius: {
+        'sm': '4px',
         'md': '6px',
-        'lg': '8px',
+        'lg': '12px',
+        'xl': '16px',
+        '2xl': '24px',
+      },
+      screens: {
+        'xs': '480px',
       },
       lineHeight: {
         'reading': '1.8',

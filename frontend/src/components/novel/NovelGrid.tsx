@@ -16,7 +16,7 @@ export default function NovelGrid({ novels, onNovelClick }: NovelGridProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
       {novels.map((novel) => (
         <NovelCard
           key={novel.id}

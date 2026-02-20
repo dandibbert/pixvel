@@ -84,46 +84,46 @@ export default function HistoryPage() {
   return (
     <div className="min-h-screen">
       {/* Bold Header Section */}
-      <div className="bg-primary pt-16 pb-24 md:pt-20 md:pb-32 px-4 mb-[-4rem]">
+      <div className="bg-primary pt-12 pb-16 md:pt-20 md:pb-32 px-4 mb-[-2.5rem] md:mb-[-4rem]">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-5xl md:text-7xl font-black text-white mb-4 tracking-tighter uppercase">
+          <h1 className="text-2xl md:text-6xl font-bold text-white mb-2 tracking-tight">
             阅读历史
           </h1>
-          <p className="text-white/80 text-xl md:text-2xl font-bold max-w-2xl leading-tight">
-            最近阅读的 {history.length} 部小说，记录您的每一次阅读。
+          <p className="text-white/80 text-sm md:text-xl font-medium max-w-2xl">
+            最近阅读的 {history.length} 部作品
           </p>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 pb-20">
-        <div className="bg-white rounded-xl p-6 md:p-10 border-b-8 border-muted">
+        <div className="bg-white rounded-2xl p-4 md:p-8 border border-border/50 shadow-xl shadow-black/5">
           {history.length === 0 ? (
-            <div className="text-center py-24 bg-muted/50 rounded-xl">
-              <div className="flex justify-center mb-8">
-                <div className="p-8 bg-muted rounded-full">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-20 w-20 text-foreground/10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <div className="text-center py-16 md:py-24 bg-muted/50 rounded-xl">
+              <div className="flex justify-center mb-6 md:mb-8">
+                <div className="p-6 md:p-8 bg-muted rounded-full">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 md:h-20 md:w-20 text-foreground/10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
               </div>
-              <p className="text-2xl font-black text-foreground/30 uppercase">暂无阅读历史</p>
+              <p className="text-xl md:text-2xl font-bold text-foreground/30 uppercase">暂无阅读历史</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
               {history.map((entry) => (
                 <div
                   key={entry.novelId}
                   onClick={() => handleNovelClick(entry.novelId)}
-                  className="bg-muted rounded-lg overflow-hidden transition-all duration-200 cursor-pointer group flex flex-col h-full hover:scale-[1.02] active:scale-[0.98]"
+                  className="bg-white border border-border/50 rounded-xl overflow-hidden transition-all duration-200 cursor-pointer group flex flex-col h-full hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 active:scale-[0.98]"
                 >
-                  <div className="p-6 flex flex-col gap-4 flex-1">
-                    <h3 className="text-xl font-extrabold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-tight tracking-tight">
+                  <div className="p-3 md:p-4 flex flex-col gap-3 flex-1">
+                    <h3 className="text-sm md:text-lg font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug tracking-tight">
                       {entry.title}
                     </h3>
-                    <div className="flex items-center justify-between mt-auto pt-4 border-t-2 border-white/50">
-                      <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">{formatDate(entry.lastReadAt)}</span>
+                    <div className="flex items-center justify-between mt-auto pt-3 border-t border-muted">
+                      <span className="text-[10px] md:text-xs font-semibold text-foreground/40 uppercase tracking-wider">{formatDate(entry.lastReadAt)}</span>
                       {entry.position > 0 && (
-                        <span className="bg-primary text-white px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest">继续阅读</span>
+                        <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-[9px] md:text-[10px] font-bold uppercase tracking-wider">继续</span>
                       )}
                     </div>
                   </div>

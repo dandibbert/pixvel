@@ -165,20 +165,20 @@ export default function SearchPage() {
   return (
     <div className="min-h-screen">
       {/* Bold Header Section */}
-      <div className="bg-primary pt-16 pb-24 md:pt-20 md:pb-32 px-4 mb-[-4rem]">
+      <div className="bg-primary pt-12 pb-16 md:pt-20 md:pb-32 px-4 mb-[-2.5rem] md:mb-[-4rem]">
         <div className="max-w-7xl mx-auto text-center md:text-left">
-          <h1 className="text-5xl md:text-7xl font-black text-white mb-4 tracking-tighter uppercase">
+          <h1 className="text-2xl md:text-6xl font-bold text-white mb-2 tracking-tight">
             搜索小说
           </h1>
-          <p className="text-white/80 text-xl md:text-2xl font-bold max-w-2xl leading-tight mx-auto md:mx-0">
-            输入关键词、作者名或标签来查找您喜欢的小说。
+          <p className="text-white/80 text-sm md:text-xl font-medium max-w-2xl mx-auto md:mx-0">
+            输入关键词、作者名或标签来查找您喜欢的小说
           </p>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 pb-20">
-        <div className="bg-white rounded-xl p-6 md:p-10 border-b-8 border-muted">
-          <div className="mb-10 space-y-6">
+        <div className="bg-white rounded-2xl p-4 md:p-8 border border-border/50 shadow-xl shadow-black/5">
+          <div className="mb-6 md:mb-10 space-y-4 md:space-y-6">
             <div className="relative">
               <SearchBar
                 value={query}
@@ -262,13 +262,13 @@ export default function SearchPage() {
           </div>
 
           {error && (
-            <div className="mb-8 p-6 bg-accent/10 border-l-8 border-accent rounded-r-lg flex items-center justify-between">
-              <p className="text-accent font-black text-lg">{error}</p>
+            <div className="mb-6 md:mb-8 p-4 md:p-6 bg-accent/10 border-l-4 border-accent rounded-r-lg flex items-center justify-between">
+              <p className="text-accent font-bold text-base md:text-lg">{error}</p>
               <button
                 onClick={clearError}
                 className="text-accent hover:scale-125 transition-transform p-2"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -276,22 +276,22 @@ export default function SearchPage() {
           )}
 
           {isLoading ? (
-            <div className="text-center py-20">
-              <div className="inline-block animate-bounce h-16 w-16 bg-primary rounded-lg flex items-center justify-center">
-                <div className="w-8 h-8 rounded-full border-4 border-white border-t-transparent animate-spin"></div>
+            <div className="text-center py-16 md:py-20">
+              <div className="inline-block animate-bounce h-12 w-12 md:h-16 md:w-16 bg-primary rounded-lg flex items-center justify-center">
+                <div className="w-6 h-6 md:w-8 md:h-8 rounded-full border-4 border-white border-t-transparent animate-spin"></div>
               </div>
-              <p className="mt-6 text-2xl font-black text-primary uppercase tracking-widest">搜索中...</p>
+              <p className="mt-4 md:mt-6 text-lg md:text-2xl font-bold text-primary uppercase tracking-widest">搜索中...</p>
             </div>
           ) : results.length > 0 ? (
             <>
-              <div className="mb-10 flex items-center justify-between">
-                <div className="bg-muted px-6 py-3 rounded-lg font-black text-foreground/50 uppercase tracking-widest text-sm">
+              <div className="mb-4 md:mb-6 flex items-center justify-between">
+                <div className="text-foreground/40 font-bold uppercase tracking-widest text-[10px] md:text-xs">
                   找到 {total.toLocaleString()} 个结果
                 </div>
               </div>
               <NovelGrid novels={results} onNovelClick={handleNovelClick} />
               {totalPages > 1 && (
-                <div className="mt-16">
+                <div className="mt-12 md:mt-16">
                   <Pagination
                     currentPage={urlState.page}
                     totalPages={totalPages}
@@ -301,26 +301,26 @@ export default function SearchPage() {
               )}
             </>
           ) : urlState.q ? (
-            <div className="text-center py-24 bg-muted/50 rounded-xl">
-              <div className="flex justify-center mb-8">
-                <div className="p-8 bg-muted rounded-full">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-20 w-20 text-foreground/10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <div className="text-center py-16 md:py-24 bg-muted/50 rounded-xl">
+              <div className="flex justify-center mb-6 md:mb-8">
+                <div className="p-6 md:p-8 bg-muted rounded-full">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 md:h-20 md:w-20 text-foreground/10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
               </div>
-              <p className="text-2xl font-black text-foreground/30 uppercase">未找到相关结果</p>
+              <p className="text-xl md:text-2xl font-bold text-foreground/30 uppercase">未找到相关结果</p>
             </div>
           ) : (
-            <div className="text-center py-24 bg-muted/50 rounded-xl">
-              <div className="flex justify-center mb-8">
-                <div className="p-8 bg-muted rounded-full animate-pulse">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-20 w-20 text-primary/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <div className="text-center py-16 md:py-24 bg-muted/50 rounded-xl">
+              <div className="flex justify-center mb-6 md:mb-8">
+                <div className="p-6 md:p-8 bg-muted rounded-full animate-pulse">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 md:h-20 md:w-20 text-primary/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-7.714 2.143L11 21l-2.286-6.857L1 12l7.714-2.143L11 3z" />
                   </svg>
                 </div>
               </div>
-              <p className="text-2xl font-black text-foreground/30 uppercase tracking-widest">输入关键词开始搜索</p>
+              <p className="text-xl md:text-2xl font-bold text-foreground/30 uppercase tracking-widest">输入关键词开始搜索</p>
             </div>
           )}
         </div>
