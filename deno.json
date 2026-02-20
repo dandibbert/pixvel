@@ -3,7 +3,7 @@
   "tasks": {
     "dev": "deno run --allow-net --allow-env --allow-read --allow-write --unstable-kv --watch src/index.ts",
     "start": "deno run --allow-net --allow-env --allow-read --allow-write --unstable-kv src/index.ts",
-    "deploy": "deployctl deploy --project=pixel-flutter src/index.ts"
+    "deploy": "deployctl deploy --project=pixvel src/index.ts"
   },
   "lint": {
     "rules": {

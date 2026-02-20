@@ -31,7 +31,7 @@ export default function TokenInputPage() {
       
       <div className="max-w-2xl w-full bg-white rounded-2xl p-10 md:p-16 relative z-10 border-b-[12px] border-muted">
         <div className="text-center mb-10">
-          <h1 className="text-5xl font-black text-primary mb-2 tracking-tighter italic uppercase">PixNovel</h1>
+          <h1 className="text-5xl font-black text-primary mb-2 tracking-tighter italic uppercase">Pixvel</h1>
           <p className="text-foreground/40 font-black uppercase tracking-widest text-lg">配置你的 Pixiv Refresh Token</p>
         </div>
 

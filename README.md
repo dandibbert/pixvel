@@ -1,6 +1,10 @@
-# Pixel Flutter
+# Pixvel
 
 一个基于 Pixiv API 的小说阅读器，提供优雅的阅读体验。
+
+## 致谢
+
+本项目参考了 [Notsfsssf/pixez-flutter](https://github.com/Notsfsssf/pixez-flutter) 的设计与实现思路。
 
 ## 技术栈
 
@@ -47,7 +51,7 @@
 1. 克隆仓库
 ```bash
 git clone <repository-url>
-cd pixel-flutter
+cd pixvel
 ```
 
 2. 配置环境变量
@@ -104,7 +108,7 @@ npm run dev
 
 前端将运行在 `http://localhost:3000`
 
-## 部署
+## 部署（前后端一体）
 
 ### Deno Deploy 部署
 
@@ -133,34 +137,22 @@ deployctl login
 - `ALLOWED_ORIGINS`
 - `PORT` (可选，默认 8000)
 
-5. 部署后端
+5. 构建前端并一体部署
 
 ```bash
+npm --prefix frontend run build
 deno task deploy
 ```
 
-或手动部署：
+说明：
+- 前端构建产物在 `frontend/dist`。
+- Deno 服务会同时提供 API 与静态页面，无需拆分前后端部署。
+
+手动部署命令：
 
 ```bash
 deployctl deploy --project=your-project-name src/index.ts
 ```
-
-### 前端部署
-
-前端可以部署到任何静态托管服务（Vercel、Netlify、Cloudflare Pages 等）。
-
-1. 构建前端
-
-```bash
-cd frontend
-npm run build
-```
-
-2. 部署 `frontend/dist` 目录到托管服务
-
-3. 配置环境变量
-
-确保前端的 API 端点指向部署的后端地址。
 
 ## API 端点
 
@@ -217,17 +209,18 @@ deno lint src
 deno check src/index.ts
 ```
 
-前端建议至少保证可构建：
+前端建议至少保证可 lint 与可构建：
 
 ```bash
 cd frontend
+npm run lint
 npm run build
 ```
 
 ### 项目结构
 
 ```
-pixel-flutter/
+pixvel/
 ├── src/                    # 后端源码
 │   ├── index.ts           # 入口文件
 │   ├── middleware/        # 中间件

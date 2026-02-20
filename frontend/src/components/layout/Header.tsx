@@ -7,7 +7,7 @@ export default function Header() {
         <div className="flex justify-between items-center h-16 md:h-20">
           <div className="flex items-center">
             <Link to="/" className="text-2xl md:text-3xl font-extrabold text-primary tracking-tighter hover:scale-105 transition-transform duration-200">
-              PixNovel
+              Pixvel
             </Link>
           </div>
 

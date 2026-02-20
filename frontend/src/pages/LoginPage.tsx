@@ -9,7 +9,7 @@ export default function LoginPage() {
       <div className="max-w-xl w-full bg-white rounded-2xl p-10 md:p-16 border-b-[10px] border-muted">
         <div className="text-center mb-12">
           <h1 className="text-5xl md:text-6xl font-black text-foreground mb-4 tracking-tighter italic">
-            PixNovel
+            Pixvel
           </h1>
           <p className="text-foreground/40 font-black uppercase tracking-widest text-lg">
             优雅的 Pixiv 小说阅读体验

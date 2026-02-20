@@ -18,7 +18,7 @@ app.use("*", cors(getCorsConfig()));
 
 // Health check (moved to /api/health to avoid conflict with frontend)
 app.get("/api/health", (c) => {
-  return c.json({ status: "ok", message: "Pixiv OAuth Backend" });
+  return c.json({ status: "ok", message: "Pixvel Backend" });
 });
 
 // Mount auth routes

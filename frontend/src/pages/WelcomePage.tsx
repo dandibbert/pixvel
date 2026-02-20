@@ -9,7 +9,7 @@ export default function WelcomePage() {
       
       <div className="max-w-2xl w-full bg-white rounded-2xl p-12 md:p-20 text-center relative z-10 border-b-[12px] border-muted">
         <h1 className="text-6xl md:text-8xl font-black text-primary mb-6 tracking-tighter uppercase italic">
-          PixNovel
+          Pixvel
         </h1>
         <p className="text-foreground/40 mb-12 text-xl md:text-2xl font-black uppercase tracking-widest leading-tight">
           简洁、优雅、大胆的<br />Pixiv 小说阅读器

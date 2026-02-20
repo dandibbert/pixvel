@@ -8,11 +8,10 @@
 deno fmt --check src deno.json
 deno lint src
 deno check src/index.ts
-cd frontend && npm run build
+cd frontend && npm run lint && npm run build
 ```
 
 说明：
-- 当前前端 `npm run lint` 需要先补 ESLint 配置后再作为发布门禁。
 - `frontend/dist` 为构建产物，不应提交到仓库。
 
 ## 2. 安全检查
