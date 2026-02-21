@@ -50,7 +50,10 @@ export default function NovelPageNav({
   }
 
   return (
-    <div className="sticky bottom-0 bg-white border-t-2 border-muted px-4 py-2 md:py-3 z-50">
+    <div
+      className="fixed inset-x-0 bottom-0 bg-white border-t-2 border-muted px-4 py-2 md:py-3 z-50"
+      style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
+    >
       <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
         {canJumpPrevSeries && series?.prev_novel ? (
           <Link
