@@ -1,6 +1,10 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 export default function WelcomePage() {
+  useEffect(() => {
+    document.title = '欢迎使用 Pixvel';
+  }, []);
   return (
     <div className="min-h-screen bg-primary flex flex-col items-center justify-center p-6 overflow-hidden relative">
       {/* Decorative geometric shapes */}

@@ -7,6 +7,10 @@ import { Novel } from '../types/novel'
 import { api } from '../utils/api'
 
 export default function ListPage() {
+  useEffect(() => {
+    document.title = '我的收藏 - Pixvel'
+  }, [])
+
   const [urlState, setUrlState] = useURLState({ page: 1 })
   const [novels, setNovels] = useState<Novel[]>([])
   const [total, setTotal] = useState(0)

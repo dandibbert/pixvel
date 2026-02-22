@@ -30,6 +30,10 @@ export default function AuthorPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   useEffect(() => {
+    document.title = author?.name ? `${author.name} - 作者 - Pixvel` : '作者作品 - Pixvel'
+  }, [author?.name])
+
+  useEffect(() => {
     if (!id) return
     setAuthor(null)
     setNovels([])

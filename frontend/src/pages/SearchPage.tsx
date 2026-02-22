@@ -49,6 +49,11 @@ export default function SearchPage() {
   // Calculate total pages
   const totalPages = Math.ceil(total / 20)
 
+  useEffect(() => {
+    const searchQuery = urlState.q?.trim()
+    document.title = searchQuery ? `搜索「${searchQuery}」- Pixvel` : '搜索小说 - Pixvel'
+  }, [urlState.q])
+
   // Load search results from URL on mount
   useEffect(() => {
     if (urlState.q) {

@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 
 export default function TokenInputPage() {
+  useEffect(() => {
+    document.title = '配置 Token - Pixvel';
+  }, []);
+
   const [refreshToken, setRefreshToken] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);

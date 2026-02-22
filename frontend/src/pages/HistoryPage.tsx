@@ -11,6 +11,10 @@ interface HistoryEntry {
 }
 
 export default function HistoryPage() {
+  useEffect(() => {
+    document.title = '阅读历史 - Pixvel'
+  }, [])
+
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

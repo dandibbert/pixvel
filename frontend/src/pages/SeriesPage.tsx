@@ -29,6 +29,10 @@ export default function SeriesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   useEffect(() => {
+    document.title = series?.title ? `${series.title} - 系列 - Pixvel` : '系列作品 - Pixvel'
+  }, [series?.title])
+
+  useEffect(() => {
     if (!id) return
     setSeries(null)
     setNovels([])

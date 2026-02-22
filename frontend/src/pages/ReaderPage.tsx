@@ -1,11 +1,35 @@
+import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useNovelDetail } from '../hooks/useNovelDetail'
 import NovelReader from '../components/novel/NovelReader'
+import { useReaderStore } from '../stores/readerStore'
 
 export default function ReaderPage() {
   const { id } = useParams<{ id: string }>()
   const { novel, series, isLoading, error } = useNovelDetail(id)
+  const currentPage = useReaderStore((state) => state.currentPage)
+  const totalPages = useReaderStore((state) => state.totalPages)
   const shouldShowInitialLoading = isLoading && (!novel || novel.id !== id)
+
+  useEffect(() => {
+    if (shouldShowInitialLoading) {
+      document.title = '加载小说中 - Pixvel'
+      return
+    }
+
+    if (novel?.title) {
+      const pageInfo = totalPages > 0 ? ` (${currentPage}/${totalPages})` : ''
+      document.title = `${novel.title}${pageInfo} - Pixvel`
+      return
+    }
+
+    if (error) {
+      document.title = '阅读失败 - Pixvel'
+      return
+    }
+
+    document.title = '阅读小说 - Pixvel'
+  }, [shouldShowInitialLoading, novel?.title, currentPage, totalPages, error])
 
   if (shouldShowInitialLoading) {
     return (
