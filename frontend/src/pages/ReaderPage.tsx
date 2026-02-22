@@ -5,8 +5,9 @@ import NovelReader from '../components/novel/NovelReader'
 export default function ReaderPage() {
   const { id } = useParams<{ id: string }>()
   const { novel, series, isLoading, error } = useNovelDetail(id)
+  const shouldShowInitialLoading = isLoading && (!novel || novel.id !== id)
 
-  if (isLoading) {
+  if (shouldShowInitialLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
