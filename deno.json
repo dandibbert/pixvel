@@ -3,7 +3,7 @@
   "tasks": {
     "dev": "deno run --allow-net --allow-env --allow-read --allow-write --unstable-kv --watch src/index.ts",
     "start": "deno run --allow-net --allow-env --allow-read --allow-write --unstable-kv src/index.ts",
-    "deploy": "npm --prefix frontend run build && deno deploy --prod ."
+    "deploy": "bash scripts/deploy.sh"
   },
   "lint": {
     "rules": {
@@ -24,5 +24,9 @@
   "imports": {
     "hono": "https://deno.land/x/hono@v3.12.8/mod.ts",
     "hono/": "https://deno.land/x/hono@v3.12.8/"
+  },
+  "deploy": {
+    "org": "dandibbert",
+    "app": "pixvel"
   }
 }
