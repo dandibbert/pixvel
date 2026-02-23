@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useURLState } from '../hooks/useURLState'
 import { useSearchStore } from '../stores/searchStore'
+import { useI18n } from '../i18n/useI18n'
 import SearchBar from '../components/search/SearchBar'
 import FilterPanel from '../components/search/FilterPanel'
 import SortControls from '../components/search/SortControls'
@@ -10,8 +11,10 @@ import Pagination from '../components/common/Pagination'
 import { Novel, SearchHistoryEntry } from '../types/search'
 
 type SearchTarget = 'partial_match_for_tags' | 'exact_match_for_tags' | 'text' | 'keyword'
+type SearchSort = 'date_desc' | 'date_asc' | 'popular_desc'
 
 export default function SearchPage() {
+  const { t, formatNumber, searchTargetLabel, sortLabel } = useI18n()
   const [urlState, setUrlState] = useURLState({
     q: '',
     page: 1,
@@ -32,7 +35,7 @@ export default function SearchPage() {
     search,
     clearError,
     removeFromHistory,
-    clearHistory
+    clearHistory,
   } = useSearchStore()
 
   const [query, setLocalQuery] = useState(urlState.q || '')
@@ -46,15 +49,15 @@ export default function SearchPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
 
-  // Calculate total pages
   const totalPages = Math.ceil(total / 20)
 
   useEffect(() => {
     const searchQuery = urlState.q?.trim()
-    document.title = searchQuery ? `搜索「${searchQuery}」- Pixvel` : '搜索小说 - Pixvel'
-  }, [urlState.q])
+    document.title = searchQuery
+      ? `${t('search.documentTitlePrefix')}「${searchQuery}」- Pixvel`
+      : t('search.documentTitleDefault')
+  }, [urlState.q, t])
 
-  // Load search results from URL on mount
   useEffect(() => {
     if (urlState.q) {
       const targetFromState = (urlState.target as SearchTarget) || cachedFilters.searchTarget || 'partial_match_for_tags'
@@ -63,16 +66,15 @@ export default function SearchPage() {
       setQuery(urlState.q)
       setSearchTarget(targetFromState)
 
-      // Check if we have cached results for this query and page
-      const isCachedQuery = cachedQuery === urlState.q &&
-                           cachedPage === urlState.page &&
-                           cachedFilters.sort === urlState.sort &&
-                           cachedFilters.searchTarget === targetFromState &&
-                           results.length > 0
+      const isCachedQuery =
+        cachedQuery === urlState.q &&
+        cachedPage === urlState.page &&
+        cachedFilters.sort === urlState.sort &&
+        cachedFilters.searchTarget === targetFromState &&
+        results.length > 0
 
-      // Only fetch if cache doesn't match
       if (!isCachedQuery) {
-        handleSearch(urlState.q, urlState.page, urlState.sort as 'date_desc' | 'date_asc' | 'popular_desc', {
+        handleSearch(urlState.q, urlState.page, urlState.sort as SearchSort, {
           searchTarget: targetFromState,
         })
       }
@@ -80,9 +82,9 @@ export default function SearchPage() {
   }, [])
 
   const handleSearch = async (
-    searchQuery?: string, 
-    searchPage?: number, 
-    searchSort?: 'date_desc' | 'date_asc' | 'popular_desc',
+    searchQuery?: string,
+    searchPage?: number,
+    searchSort?: SearchSort,
     options?: {
       searchTarget?: SearchTarget
       startDate?: string
@@ -90,11 +92,11 @@ export default function SearchPage() {
       bookmarkNum?: number
     }
   ) => {
-    setShowHistory(false) // Hide history when searching
+    setShowHistory(false)
     const queryToUse = searchQuery !== undefined ? searchQuery : query
     const pageToUse = searchPage !== undefined ? searchPage : urlState.page
-    const sortToUse = searchSort !== undefined ? searchSort : urlState.sort as 'date_desc' | 'date_asc' | 'popular_desc'
-    
+    const sortToUse = searchSort !== undefined ? searchSort : (urlState.sort as SearchSort)
+
     const targetToUse = options?.searchTarget ?? searchTarget
     const startDateToUse = options?.startDate ?? startDate
     const endDateToUse = options?.endDate ?? endDate
@@ -117,14 +119,14 @@ export default function SearchPage() {
     })
   }
 
-  const handleSortChange = (sort: 'date_desc' | 'date_asc' | 'popular_desc') => {
+  const handleSortChange = (sort: SearchSort) => {
     if (query) {
       handleSearch(query, 1, sort)
     }
   }
 
   const handlePageChange = (newPage: number) => {
-    handleSearch(query, newPage, urlState.sort as 'date_desc' | 'date_asc' | 'popular_desc')
+    handleSearch(query, newPage, urlState.sort as SearchSort)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -144,39 +146,17 @@ export default function SearchPage() {
       searchTarget: entry.searchTarget,
       startDate: entry.startDate,
       endDate: entry.endDate,
-      bookmarkNum: entry.bookmarkNum
+      bookmarkNum: entry.bookmarkNum,
     })
-  }
-
-  const translateSearchTarget = (target: string) => {
-    const map: Record<string, string> = {
-      partial_match_for_tags: '标签(部分)',
-      exact_match_for_tags: '标签(完全)',
-      text: '正文',
-      keyword: '关键词'
-    }
-    return map[target] || target
-  }
-  
-  const translateSort = (sort: string) => {
-    const map: Record<string, string> = {
-      date_desc: '最新',
-      date_asc: '最旧',
-      popular_desc: '热门'
-    }
-    return map[sort] || sort
   }
 
   return (
     <div className="min-h-screen">
-      {/* Bold Header Section */}
       <div className="bg-primary pt-12 pb-16 md:pt-20 md:pb-32 px-4 mb-[-2.5rem] md:mb-[-4rem]">
         <div className="max-w-7xl mx-auto text-center md:text-left">
-          <h1 className="text-2xl md:text-6xl font-bold text-white mb-2 tracking-tight">
-            搜索小说
-          </h1>
+          <h1 className="text-2xl md:text-6xl font-bold text-white mb-2 tracking-tight">{t('search.title')}</h1>
           <p className="text-white/80 text-sm md:text-xl font-medium max-w-2xl mx-auto md:mx-0">
-            输入关键词、作者名或标签来查找您喜欢的小说
+            {t('search.subtitle')}
           </p>
         </div>
       </div>
@@ -191,30 +171,29 @@ export default function SearchPage() {
                 onSearch={() => handleSearch()}
                 onFocus={() => setShowHistory(true)}
               />
-              
-              {/* Search History Dropdown */}
+
               {showHistory && searchHistory.length > 0 && (
                 <div className="absolute z-20 w-full mt-4 bg-white rounded-lg border-4 border-primary overflow-hidden">
                   <div className="flex items-center justify-between px-6 py-4 bg-muted border-b-2 border-primary/10">
-                    <span className="text-xs font-black text-foreground/40 uppercase tracking-widest">最近搜索</span>
+                    <span className="text-xs font-black text-foreground/40 uppercase tracking-widest">{t('search.historyRecent')}</span>
                     <div className="flex gap-6">
-                       <button 
+                      <button
                         onClick={clearHistory}
                         className="text-xs font-black text-foreground/40 hover:text-accent transition-colors"
                       >
-                        清空
+                        {t('search.historyClear')}
                       </button>
-                      <button 
+                      <button
                         onClick={() => setShowHistory(false)}
                         className="text-xs font-black text-primary hover:scale-110 transition-transform"
                       >
-                        关闭
+                        {t('search.historyClose')}
                       </button>
                     </div>
                   </div>
                   <div className="max-h-[400px] overflow-y-auto">
                     {searchHistory.map((entry, index) => (
-                      <div 
+                      <div
                         key={index}
                         className="group flex items-center justify-between px-6 py-4 hover:bg-muted cursor-pointer border-b-2 border-muted last:border-0 transition-all"
                         onClick={() => handleHistoryClick(entry)}
@@ -226,9 +205,9 @@ export default function SearchPage() {
                           <div className="min-w-0">
                             <div className="text-lg font-bold text-foreground truncate">{entry.query}</div>
                             <div className="text-[10px] font-black text-foreground/30 flex items-center gap-3 truncate uppercase tracking-widest">
-                              <span className="bg-muted px-2 py-0.5 rounded">{translateSearchTarget(entry.searchTarget)}</span>
-                              <span>{translateSort(entry.sort)}</span>
-                              {(entry.bookmarkNum || 0) > 0 && <span className="text-primary">{entry.bookmarkNum}+收藏</span>}
+                              <span className="bg-muted px-2 py-0.5 rounded">{searchTargetLabel(entry.searchTarget)}</span>
+                              <span>{sortLabel(entry.sort)}</span>
+                              {(entry.bookmarkNum || 0) > 0 && <span className="text-primary">{formatNumber(entry.bookmarkNum || 0)}+{t('search.historyBookmarkSuffix')}</span>}
                             </div>
                           </div>
                         </div>
@@ -262,7 +241,7 @@ export default function SearchPage() {
                 onBookmarkNumChange={setBookmarkNum}
                 onApply={() => handleSearch()}
               />
-              <SortControls value={urlState.sort as 'date_desc' | 'date_asc' | 'popular_desc'} onChange={handleSortChange} />
+              <SortControls value={urlState.sort as SearchSort} onChange={handleSortChange} />
             </div>
           </div>
 
@@ -285,13 +264,13 @@ export default function SearchPage() {
               <div className="inline-block animate-bounce h-12 w-12 md:h-16 md:w-16 bg-primary rounded-lg flex items-center justify-center">
                 <div className="w-6 h-6 md:w-8 md:h-8 rounded-full border-4 border-white border-t-transparent animate-spin"></div>
               </div>
-              <p className="mt-4 md:mt-6 text-lg md:text-2xl font-bold text-primary uppercase tracking-widest">搜索中...</p>
+              <p className="mt-4 md:mt-6 text-lg md:text-2xl font-bold text-primary uppercase tracking-widest">{t('search.loading')}</p>
             </div>
           ) : results.length > 0 ? (
             <>
               <div className="mb-4 md:mb-6 flex items-center justify-between">
                 <div className="text-foreground/40 font-bold uppercase tracking-widest text-[10px] md:text-xs">
-                  找到 {total.toLocaleString()} 个结果
+                  {t('search.resultsFoundPrefix')} {formatNumber(total)} {t('search.resultsFoundSuffix')}
                 </div>
               </div>
               <NovelGrid novels={results} onNovelClick={handleNovelClick} />
@@ -314,7 +293,7 @@ export default function SearchPage() {
                   </svg>
                 </div>
               </div>
-              <p className="text-xl md:text-2xl font-bold text-foreground/30 uppercase">未找到相关结果</p>
+              <p className="text-xl md:text-2xl font-bold text-foreground/30 uppercase">{t('search.emptyNoResults')}</p>
             </div>
           ) : (
             <div className="text-center py-16 md:py-24 bg-muted/50 rounded-xl">
@@ -325,7 +304,7 @@ export default function SearchPage() {
                   </svg>
                 </div>
               </div>
-              <p className="text-xl md:text-2xl font-bold text-foreground/30 uppercase tracking-widest">输入关键词开始搜索</p>
+              <p className="text-xl md:text-2xl font-bold text-foreground/30 uppercase tracking-widest">{t('search.emptyStartSearch')}</p>
             </div>
           )}
         </div>

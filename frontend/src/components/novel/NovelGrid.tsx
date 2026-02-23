@@ -1,5 +1,6 @@
 import { Novel } from '../../types/novel'
 import NovelCard from './NovelCard'
+import { useI18n } from '../../i18n/useI18n'
 
 interface NovelGridProps {
   novels: Novel[]
@@ -7,10 +8,12 @@ interface NovelGridProps {
 }
 
 export default function NovelGrid({ novels, onNovelClick }: NovelGridProps) {
+  const { t } = useI18n()
+
   if (novels.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">暂无结果</p>
+        <p className="text-gray-500">{t('novelGrid.empty')}</p>
       </div>
     )
   }

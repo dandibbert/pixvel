@@ -4,6 +4,7 @@ import NovelGrid from '../components/novel/NovelGrid'
 import NovelPreviewModal from '../components/novel/NovelPreviewModal'
 import { Novel } from '../types/novel'
 import { api } from '../utils/api'
+import { useI18n } from '../i18n/useI18n'
 
 interface SeriesResponse {
   series: {
@@ -17,6 +18,7 @@ interface SeriesResponse {
 }
 
 export default function SeriesPage() {
+  const { t, formatNumber } = useI18n()
   const { id } = useParams()
   const [series, setSeries] = useState<SeriesResponse['series'] | null>(null)
   const [novels, setNovels] = useState<Novel[]>([])
@@ -29,8 +31,8 @@ export default function SeriesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   useEffect(() => {
-    document.title = series?.title ? `${series.title} - 系列 - Pixvel` : '系列作品 - Pixvel'
-  }, [series?.title])
+    document.title = series?.title ? `${series.title}${t('series.documentTitleSuffix')}` : t('series.documentTitleDefault')
+  }, [series?.title, t])
 
   useEffect(() => {
     if (!id) return
@@ -58,7 +60,7 @@ export default function SeriesPage() {
         setHasMore(response.hasMore)
         setNextPage(response.nextPage ?? null)
       } catch (err) {
-        setError(err instanceof Error ? err.message : '加载系列失败')
+        setError(err instanceof Error ? err.message : t('series.loadErrorFallback'))
       } finally {
         setIsLoading(false)
       }
@@ -81,12 +83,14 @@ export default function SeriesPage() {
     <div className="min-h-screen">
       <div className="bg-primary pt-12 pb-16 md:pt-20 md:pb-32 px-4 mb-[-2.5rem] md:mb-[-4rem]">
         <div className="max-w-7xl mx-auto">
-          <p className="text-white/60 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2">系列</p>
+          <p className="text-white/60 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2">{t('series.label')}</p>
           <h1 className="text-2xl md:text-5xl font-bold text-white mb-2 tracking-tight">
-            {series?.title || '加载中...'}
+            {series?.title || t('series.loadingName')}
           </h1>
           <p className="text-white/80 text-sm md:text-lg font-medium max-w-2xl">
-            {novels.length > 0 ? `已加载 ${novels.length} 篇` : '浏览该系列的所有作品'}
+            {novels.length > 0
+              ? t('series.subtitleLoaded').replace('{count}', formatNumber(novels.length))
+              : t('series.subtitleDefault')}
           </p>
         </div>
       </div>
@@ -104,7 +108,7 @@ export default function SeriesPage() {
               <div className="inline-block animate-bounce h-12 w-12 md:h-16 md:w-16 bg-primary rounded-lg flex items-center justify-center">
                 <div className="w-6 h-6 md:w-8 md:h-8 rounded-full border-4 border-white border-t-transparent animate-spin"></div>
               </div>
-              <p className="mt-4 md:mt-6 text-lg md:text-2xl font-bold text-primary uppercase tracking-widest">加载中...</p>
+              <p className="mt-4 md:mt-6 text-lg md:text-2xl font-bold text-primary uppercase tracking-widest">{t('series.loading')}</p>
             </div>
           ) : novels.length > 0 ? (
             <>
@@ -116,7 +120,7 @@ export default function SeriesPage() {
                     disabled={isLoading}
                     className="h-12 md:h-14 px-8 md:px-10 bg-primary text-white font-bold rounded-lg hover:scale-105 active:scale-95 transition-all disabled:opacity-40 disabled:hover:scale-100"
                   >
-                    {isLoading ? '加载中...' : '加载更多'}
+                    {isLoading ? t('series.loading') : t('series.loadMore')}
                   </button>
                 </div>
               )}
@@ -130,7 +134,7 @@ export default function SeriesPage() {
                   </svg>
                 </div>
               </div>
-              <p className="text-xl md:text-2xl font-bold text-foreground/30 uppercase">暂无系列作品</p>
+              <p className="text-xl md:text-2xl font-bold text-foreground/30 uppercase">{t('series.empty')}</p>
             </div>
           )}
         </div>

@@ -1,18 +1,22 @@
+import { useI18n } from '../../i18n/useI18n'
+
 interface SortControlsProps {
   value: 'date_desc' | 'date_asc' | 'popular_desc'
   onChange: (value: 'date_desc' | 'date_asc' | 'popular_desc') => void
 }
 
 export default function SortControls({ value, onChange }: SortControlsProps) {
+  const { t, sortLabel } = useI18n()
+
   const options = [
-    { value: 'date_desc' as const, label: '最新发布' },
-    { value: 'date_asc' as const, label: '最早发布' },
-    { value: 'popular_desc' as const, label: '最受欢迎' },
+    { value: 'date_desc' as const },
+    { value: 'date_asc' as const },
+    { value: 'popular_desc' as const },
   ]
 
   return (
     <div className="flex items-center gap-3">
-      <span className="text-xs font-black text-foreground/30 uppercase tracking-widest hidden sm:inline">排序方式</span>
+      <span className="text-xs font-black text-foreground/30 uppercase tracking-widest hidden sm:inline">{t('sort.title')}</span>
       <div className="flex bg-muted p-1.5 rounded-lg">
         {options.map((option) => (
           <button
@@ -24,7 +28,7 @@ export default function SortControls({ value, onChange }: SortControlsProps) {
                 : 'text-foreground/40 hover:text-foreground hover:bg-white'
             }`}
           >
-            {option.label}
+            {sortLabel(option.value)}
           </button>
         ))}
       </div>

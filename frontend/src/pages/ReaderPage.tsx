@@ -3,8 +3,10 @@ import { useParams } from 'react-router-dom'
 import { useNovelDetail } from '../hooks/useNovelDetail'
 import NovelReader from '../components/novel/NovelReader'
 import { useReaderStore } from '../stores/readerStore'
+import { useI18n } from '../i18n/useI18n'
 
 export default function ReaderPage() {
+  const { t } = useI18n()
   const { id } = useParams<{ id: string }>()
   const { novel, series, isLoading, error } = useNovelDetail(id)
   const currentPage = useReaderStore((state) => state.currentPage)
@@ -13,7 +15,7 @@ export default function ReaderPage() {
 
   useEffect(() => {
     if (shouldShowInitialLoading) {
-      document.title = '加载小说中 - Pixvel'
+      document.title = t('reader.documentTitleLoading')
       return
     }
 
@@ -24,31 +26,38 @@ export default function ReaderPage() {
     }
 
     if (error) {
-      document.title = '阅读失败 - Pixvel'
+      document.title = t('reader.documentTitleError')
       return
     }
 
-    document.title = '阅读小说 - Pixvel'
-  }, [shouldShowInitialLoading, novel?.title, currentPage, totalPages, error])
+    document.title = t('reader.documentTitleDefault')
+  }, [shouldShowInitialLoading, novel?.title, currentPage, totalPages, error, t])
 
   if (shouldShowInitialLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pixiv-blue mx-auto mb-4"></div>
-          <p className="text-gray-600">加载中...</p>
+          <p className="text-gray-600">{t('common.loading')}</p>
         </div>
       </div>
     )
   }
 
   if (error) {
+    const errorMessage =
+      error === 'ERR_READER_CONTENT_EMPTY'
+        ? t('reader.contentEmptyError')
+        : error === 'ERR_READER_LOAD_FAILED'
+          ? t('reader.loadFailedError')
+          : error
+
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
+          <p className="text-red-600 mb-4">{errorMessage}</p>
           <a href="/" className="text-pixiv-blue hover:underline">
-            返回首页
+            {t('common.backHome')}
           </a>
         </div>
       </div>
@@ -59,9 +68,9 @@ export default function ReaderPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <p className="text-gray-600 mb-4">小说不存在</p>
+          <p className="text-gray-600 mb-4">{t('reader.notFound')}</p>
           <a href="/" className="text-pixiv-blue hover:underline">
-            返回首页
+            {t('common.backHome')}
           </a>
         </div>
       </div>

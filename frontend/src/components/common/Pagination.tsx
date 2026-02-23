@@ -6,6 +6,7 @@ interface PaginationProps {
 }
 
 import { useState } from 'react'
+import { useI18n } from '../../i18n/useI18n'
 
 interface PaginationProps {
   currentPage: number
@@ -18,6 +19,7 @@ export default function Pagination({
   totalPages,
   onPageChange,
 }: PaginationProps) {
+  const { t } = useI18n()
   const [jumpValue, setJumpValue] = useState('')
 
   const getPageNumbers = () => {
@@ -126,7 +128,7 @@ export default function Pagination({
           type="submit"
           className="h-9 md:h-10 px-3 md:px-4 bg-primary text-white rounded-lg font-bold text-[10px] uppercase tracking-wider hover:scale-105 active:scale-95 transition-all"
         >
-          跳转
+          {t('pagination.jump')}
         </button>
       </form>
     </div>

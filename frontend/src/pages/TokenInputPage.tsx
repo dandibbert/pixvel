@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import { useI18n } from '../i18n/useI18n';
 
 export default function TokenInputPage() {
+  const { t } = useI18n();
+
   useEffect(() => {
-    document.title = '配置 Token - Pixvel';
-  }, []);
+    document.title = t('token.documentTitleDefault');
+  }, [t]);
 
   const [refreshToken, setRefreshToken] = useState('');
   const [error, setError] = useState('');
@@ -22,7 +25,7 @@ export default function TokenInputPage() {
       await setupAuth(refreshToken);
       navigate('/history');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed');
+      setError(err instanceof Error ? err.message : t('token.authFailedFallback'));
     } finally {
       setLoading(false);
     }
@@ -36,7 +39,7 @@ export default function TokenInputPage() {
       <div className="max-w-2xl w-full bg-white rounded-2xl p-10 md:p-16 relative z-10 border-b-[12px] border-muted">
         <div className="text-center mb-10">
           <h1 className="text-5xl font-black text-primary mb-2 tracking-tighter italic uppercase">Pixvel</h1>
-          <p className="text-foreground/40 font-black uppercase tracking-widest text-lg">配置你的 Pixiv Refresh Token</p>
+          <p className="text-foreground/40 font-black uppercase tracking-widest text-lg">{t('token.subtitle')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -48,7 +51,7 @@ export default function TokenInputPage() {
               id="refreshToken"
               value={refreshToken}
               onChange={(e) => setRefreshToken(e.target.value)}
-              placeholder="粘贴你的 Pixiv refresh_token"
+              placeholder={t('token.placeholder')}
               className="w-full h-32 px-6 py-4 bg-muted border-none rounded-xl font-bold focus:ring-4 focus:ring-primary/20 transition-all resize-none text-lg"
               required
             />
@@ -65,21 +68,21 @@ export default function TokenInputPage() {
             disabled={loading || !refreshToken.trim()}
             className="w-full h-16 bg-primary text-white py-4 px-10 rounded-xl font-black hover:scale-105 active:scale-95 disabled:opacity-30 disabled:hover:scale-100 transition-all text-xl uppercase tracking-widest"
           >
-            {loading ? '验证中...' : '开始使用'}
+            {loading ? t('token.submitting') : t('token.submit')}
           </button>
         </form>
 
         <div className="mt-10 p-8 bg-muted rounded-xl">
-          <h3 className="text-sm font-black text-foreground mb-4 uppercase tracking-widest">如何获取 Refresh Token？</h3>
+          <h3 className="text-sm font-black text-foreground mb-4 uppercase tracking-widest">{t('token.helpTitle')}</h3>
           <ol className="text-sm text-foreground/60 space-y-2 list-decimal list-inside font-bold">
-            <li>使用 Pixiv 官方移动应用登录</li>
-            <li>使用抓包工具（如 Charles、mitmproxy）</li>
-            <li>找到 OAuth token 请求中的 refresh_token</li>
-            <li>复制并粘贴到上方输入框</li>
+            <li>{t('token.step1')}</li>
+            <li>{t('token.step2')}</li>
+            <li>{t('token.step3')}</li>
+            <li>{t('token.step4')}</li>
           </ol>
           <div className="mt-6 pt-6 border-t-2 border-white/50">
             <p className="text-[10px] font-black text-foreground/20 uppercase tracking-[0.2em] leading-tight">
-              注意：refresh_token 是敏感信息，请妥善保管。
+              {t('token.securityNote')}
             </p>
           </div>
         </div>

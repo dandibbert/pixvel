@@ -38,7 +38,7 @@ export const useReaderStore = create<ReaderState>((set, get) => ({
 
       // Ensure content exists
       if (!contentResponse.content) {
-        throw new Error('小说内容为空')
+        throw new Error('ERR_READER_CONTENT_EMPTY')
       }
 
       const pageTexts = splitByNewpage(contentResponse.content)
@@ -57,7 +57,7 @@ export const useReaderStore = create<ReaderState>((set, get) => ({
     } catch (error) {
       console.error('Load novel error:', error)
       set({
-        error: error instanceof Error ? error.message : 'Failed to load novel',
+        error: error instanceof Error ? error.message : 'ERR_READER_LOAD_FAILED',
         isLoading: false,
       })
     }

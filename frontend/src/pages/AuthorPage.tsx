@@ -4,6 +4,7 @@ import NovelGrid from '../components/novel/NovelGrid'
 import NovelPreviewModal from '../components/novel/NovelPreviewModal'
 import { Novel } from '../types/novel'
 import { api } from '../utils/api'
+import { useI18n } from '../i18n/useI18n'
 
 interface AuthorResponse {
   author: {
@@ -18,6 +19,7 @@ interface AuthorResponse {
 }
 
 export default function AuthorPage() {
+  const { t, formatNumber } = useI18n()
   const { id } = useParams()
   const [author, setAuthor] = useState<AuthorResponse['author'] | null>(null)
   const [novels, setNovels] = useState<Novel[]>([])
@@ -30,8 +32,8 @@ export default function AuthorPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   useEffect(() => {
-    document.title = author?.name ? `${author.name} - 作者 - Pixvel` : '作者作品 - Pixvel'
-  }, [author?.name])
+    document.title = author?.name ? `${author.name}${t('author.documentTitleSuffix')}` : t('author.documentTitleDefault')
+  }, [author?.name, t])
 
   useEffect(() => {
     if (!id) return
@@ -59,7 +61,7 @@ export default function AuthorPage() {
         setHasMore(response.hasMore)
         setNextPage(response.nextPage ?? null)
       } catch (err) {
-        setError(err instanceof Error ? err.message : '加载作者作品失败')
+        setError(err instanceof Error ? err.message : t('author.loadErrorFallback'))
       } finally {
         setIsLoading(false)
       }
@@ -82,12 +84,14 @@ export default function AuthorPage() {
     <div className="min-h-screen">
       <div className="bg-primary pt-12 pb-16 md:pt-20 md:pb-32 px-4 mb-[-2.5rem] md:mb-[-4rem]">
         <div className="max-w-7xl mx-auto">
-          <p className="text-white/60 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2">作者作品</p>
+          <p className="text-white/60 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2">{t('author.label')}</p>
           <h1 className="text-2xl md:text-5xl font-bold text-white mb-2 tracking-tight">
-            {author?.name || '加载中...'}
+            {author?.name || t('author.loadingName')}
           </h1>
           <p className="text-white/80 text-sm md:text-lg font-medium max-w-2xl">
-            {novels.length > 0 ? `已加载 ${novels.length} 篇` : '浏览该作者的所有作品'}
+            {novels.length > 0
+              ? t('author.subtitleLoaded').replace('{count}', formatNumber(novels.length))
+              : t('author.subtitleDefault')}
           </p>
         </div>
       </div>
@@ -105,7 +109,7 @@ export default function AuthorPage() {
               <div className="inline-block animate-bounce h-12 w-12 md:h-16 md:w-16 bg-primary rounded-lg flex items-center justify-center">
                 <div className="w-6 h-6 md:w-8 md:h-8 rounded-full border-4 border-white border-t-transparent animate-spin"></div>
               </div>
-              <p className="mt-4 md:mt-6 text-lg md:text-2xl font-bold text-primary uppercase tracking-widest">加载中...</p>
+              <p className="mt-4 md:mt-6 text-lg md:text-2xl font-bold text-primary uppercase tracking-widest">{t('author.loading')}</p>
             </div>
           ) : novels.length > 0 ? (
             <>
@@ -117,7 +121,7 @@ export default function AuthorPage() {
                     disabled={isLoading}
                     className="h-12 md:h-14 px-8 md:px-10 bg-primary text-white font-bold rounded-lg hover:scale-105 active:scale-95 transition-all disabled:opacity-40 disabled:hover:scale-100"
                   >
-                    {isLoading ? '加载中...' : '加载更多'}
+                    {isLoading ? t('author.loading') : t('author.loadMore')}
                   </button>
                 </div>
               )}
@@ -131,7 +135,7 @@ export default function AuthorPage() {
                   </svg>
                 </div>
               </div>
-              <p className="text-xl md:text-2xl font-bold text-foreground/30 uppercase">暂无作者作品</p>
+              <p className="text-xl md:text-2xl font-bold text-foreground/30 uppercase">{t('author.empty')}</p>
             </div>
           )}
         </div>

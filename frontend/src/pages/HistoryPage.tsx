@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useI18n } from '../i18n/useI18n'
 import { api } from '../utils/api'
 
 interface HistoryEntry {
@@ -11,14 +12,15 @@ interface HistoryEntry {
 }
 
 export default function HistoryPage() {
-  useEffect(() => {
-    document.title = '阅读历史 - Pixvel'
-  }, [])
-
+  const { locale, t, formatNumber } = useI18n()
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    document.title = t('history.documentTitleDefault')
+  }, [t])
 
   useEffect(() => {
     loadHistory()
@@ -31,7 +33,7 @@ export default function HistoryPage() {
       const response = await api.get<{ history: HistoryEntry[] }>('/history/novels?limit=50')
       setHistory(response.history)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载历史记录失败')
+      setError(err instanceof Error ? err.message : t('history.loadErrorFallback'))
     } finally {
       setIsLoading(false)
     }
@@ -48,22 +50,26 @@ export default function HistoryPage() {
     const days = Math.floor(diff / (1000 * 60 * 60 * 24))
 
     if (days === 0) {
-      return '今天'
-    } else if (days === 1) {
-      return '昨天'
-    } else if (days < 7) {
-      return `${days}天前`
-    } else {
-      return date.toLocaleDateString('zh-CN')
+      return t('history.today')
     }
+    if (days === 1) {
+      return t('history.yesterday')
+    }
+    if (days < 7) {
+      return t('history.daysAgo').replace('{count}', formatNumber(days))
+    }
+
+    return date.toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'zh-CN')
   }
+
+  const subtitle = t('history.subtitle').replace('{count}', formatNumber(history.length))
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pixiv-blue mx-auto mb-4"></div>
-          <p className="text-gray-600">加载中...</p>
+          <p className="text-gray-600">{t('history.loading')}</p>
         </div>
       </div>
     )
@@ -78,7 +84,7 @@ export default function HistoryPage() {
             onClick={loadHistory}
             className="text-pixiv-blue hover:underline"
           >
-            重试
+            {t('history.retry')}
           </button>
         </div>
       </div>
@@ -87,14 +93,13 @@ export default function HistoryPage() {
 
   return (
     <div className="min-h-screen">
-      {/* Bold Header Section */}
       <div className="bg-primary pt-12 pb-16 md:pt-20 md:pb-32 px-4 mb-[-2.5rem] md:mb-[-4rem]">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-2xl md:text-6xl font-bold text-white mb-2 tracking-tight">
-            阅读历史
+            {t('history.title')}
           </h1>
           <p className="text-white/80 text-sm md:text-xl font-medium max-w-2xl">
-            最近阅读的 {history.length} 部作品
+            {subtitle}
           </p>
         </div>
       </div>
@@ -110,7 +115,7 @@ export default function HistoryPage() {
                   </svg>
                 </div>
               </div>
-              <p className="text-xl md:text-2xl font-bold text-foreground/30 uppercase">暂无阅读历史</p>
+              <p className="text-xl md:text-2xl font-bold text-foreground/30 uppercase">{t('history.empty')}</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
@@ -127,7 +132,7 @@ export default function HistoryPage() {
                     <div className="flex items-center justify-between mt-auto pt-3 border-t border-muted">
                       <span className="text-[10px] md:text-xs font-semibold text-foreground/40 uppercase tracking-wider">{formatDate(entry.lastReadAt)}</span>
                       {entry.position > 0 && (
-                        <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-[9px] md:text-[10px] font-bold uppercase tracking-wider">继续</span>
+                        <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-[9px] md:text-[10px] font-bold uppercase tracking-wider">{t('history.continue')}</span>
                       )}
                     </div>
                   </div>

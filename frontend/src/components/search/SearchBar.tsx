@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useI18n } from '../../i18n/useI18n'
 
 interface SearchBarProps {
   value: string
@@ -14,9 +15,10 @@ export default function SearchBar({
   onChange,
   onSearch,
   onFocus,
-  placeholder = '搜索小说...',
+  placeholder,
   debounceMs = 500,
 }: SearchBarProps) {
+  const { t } = useI18n()
   const [localValue, setLocalValue] = useState(value)
 
   useEffect(() => {
@@ -46,7 +48,7 @@ export default function SearchBar({
           value={localValue}
           onChange={(e) => setLocalValue(e.target.value)}
           onFocus={onFocus}
-          placeholder={placeholder}
+          placeholder={placeholder ?? t('search.placeholder')}
           className="w-full h-16 px-6 pl-14 pr-32 bg-muted text-foreground font-bold rounded-lg focus:outline-none focus:bg-white focus:ring-4 focus:ring-primary/20 transition-all text-lg"
         />
         <div className="absolute left-5 top-1/2 -translate-y-1/2 text-foreground/30">
@@ -68,7 +70,7 @@ export default function SearchBar({
           type="submit"
           className="absolute right-3 top-1/2 -translate-y-1/2 h-12 px-6 bg-primary text-white rounded-md hover:scale-105 active:scale-95 transition-all text-sm font-black uppercase tracking-widest"
         >
-          搜索
+          {t('search.submit')}
         </button>
       </div>
     </form>

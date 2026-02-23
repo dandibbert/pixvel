@@ -1,3 +1,5 @@
+import { useI18n } from '../../i18n/useI18n'
+
 interface ErrorMessageProps {
   message: string
   onRetry?: () => void
@@ -5,6 +7,8 @@ interface ErrorMessageProps {
 }
 
 export default function ErrorMessage({ message, onRetry, className = '' }: ErrorMessageProps) {
+  const { t } = useI18n()
+
   return (
     <div className={`bg-accent/10 border-l-[12px] border-accent rounded-r-xl p-8 md:p-10 ${className}`}>
       <div className="flex items-start space-x-6">
@@ -24,14 +28,14 @@ export default function ErrorMessage({ message, onRetry, className = '' }: Error
           </svg>
         </div>
         <div className="flex-1">
-          <h3 className="text-2xl font-black text-accent mb-2 uppercase tracking-tight">出错了</h3>
+          <h3 className="text-2xl font-black text-accent mb-2 uppercase tracking-tight">{t('common.errorTitle')}</h3>
           <p className="text-lg font-bold text-foreground/60 leading-tight">{message}</p>
           {onRetry && (
             <button
               onClick={onRetry}
               className="mt-6 h-14 px-8 bg-accent text-white rounded-lg font-black hover:scale-105 active:scale-95 transition-all uppercase tracking-widest text-sm"
             >
-              重试
+              {t('common.retry')}
             </button>
           )}
         </div>
@@ -40,7 +44,9 @@ export default function ErrorMessage({ message, onRetry, className = '' }: Error
   )
 }
 
-export function EmptyState({ message = '暂无数据', icon }: { message?: string; icon?: React.ReactNode }) {
+export function EmptyState({ message, icon }: { message?: string; icon?: React.ReactNode }) {
+  const { t } = useI18n()
+
   return (
     <div className="text-center py-20 md:py-32 bg-muted/20 rounded-2xl">
       {icon || (
@@ -52,7 +58,7 @@ export function EmptyState({ message = '暂无数据', icon }: { message?: strin
           </div>
         </div>
       )}
-      <p className="text-2xl font-black text-foreground/30 uppercase tracking-widest">{message}</p>
+      <p className="text-2xl font-black text-foreground/30 uppercase tracking-widest">{message || t('common.noData')}</p>
     </div>
   )
 }

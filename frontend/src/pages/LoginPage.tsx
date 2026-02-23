@@ -1,4 +1,8 @@
+import { useI18n } from '../i18n/useI18n'
+
 export default function LoginPage() {
+  const { t } = useI18n()
+
   const handleLogin = () => {
     // OAuth login will be implemented later
     window.location.href = '/api/auth/pixiv'
@@ -12,7 +16,7 @@ export default function LoginPage() {
             Pixvel
           </h1>
           <p className="text-foreground/40 font-black uppercase tracking-widest text-lg">
-            优雅的 Pixiv 小说阅读体验
+            {t('login.subtitle')}
           </p>
         </div>
 
@@ -21,11 +25,11 @@ export default function LoginPage() {
             onClick={handleLogin}
             className="w-full h-20 flex items-center justify-center px-10 bg-primary text-white text-xl font-black rounded-xl hover:scale-105 active:scale-95 transition-all uppercase tracking-widest"
           >
-            使用 Pixiv 账号登录
+            {t('login.button')}
           </button>
 
           <p className="text-sm font-bold text-foreground/30 text-center uppercase tracking-wider">
-            登录即表示您同意我们的服务条款和隐私政策
+            {t('login.terms')}
           </p>
         </div>
       </div>

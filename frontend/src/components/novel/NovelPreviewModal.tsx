@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useState, useRef, useEffect } from 'react'
 import Modal from '../common/Modal'
 import { Novel } from '../../types/novel'
+import { useI18n } from '../../i18n/useI18n'
 
 interface NovelPreviewModalProps {
   novel: Novel | null
@@ -14,6 +15,7 @@ export default function NovelPreviewModal({
   isOpen,
   onClose,
 }: NovelPreviewModalProps) {
+  const { locale, t, formatNumber } = useI18n()
   const navigate = useNavigate()
   const [showContextMenu, setShowContextMenu] = useState(false)
   const longPressTimer = useRef<number | null>(null)
@@ -146,7 +148,7 @@ export default function NovelPreviewModal({
                     {novel.author.name}
                   </button>
                   <p className="text-xs md:text-sm font-semibold text-foreground/40">
-                    {new Date(novel.createdAt).toLocaleDateString('zh-CN')}
+                    {new Date(novel.createdAt).toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'zh-CN')}
                   </p>
                 </div>
               </div>
@@ -160,7 +162,7 @@ export default function NovelPreviewModal({
                     onClose()
                   }}
                 >
-                  <span className="uppercase tracking-wider text-[10px]">系列</span>
+                  <span className="uppercase tracking-wider text-[10px]">{t('preview.series')}</span>
                   <span className="truncate">{novel.series.title}</span>
                 </button>
               )}
@@ -170,14 +172,14 @@ export default function NovelPreviewModal({
                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" fill="currentColor" viewBox="0 0 24 24">
                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                    </svg>
-                  {novel.totalBookmarks.toLocaleString()}
+                  {formatNumber(novel.totalBookmarks)}
                 </span>
                 <span className="flex items-center gap-1.5 md:gap-2">
                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                    </svg>
-                  {novel.totalViews.toLocaleString()}
+                  {formatNumber(novel.totalViews)}
                 </span>
                 <span className="bg-primary/10 text-primary px-2 py-0.5 rounded uppercase tracking-wider text-[10px] font-bold">{novel.pageCount}P</span>
               </div>
@@ -194,7 +196,7 @@ export default function NovelPreviewModal({
             </div>
 
             <div>
-              <h3 className="text-base md:text-lg font-bold text-foreground mb-3 uppercase tracking-wide">简介</h3>
+              <h3 className="text-base md:text-lg font-bold text-foreground mb-3 uppercase tracking-wide">{t('preview.description')}</h3>
               <div
                 className="text-foreground/70 leading-relaxed text-sm md:text-base bg-muted/30 p-4 md:p-6 rounded-lg break-words overflow-wrap-anywhere"
                 dangerouslySetInnerHTML={{ __html: novel.description }}
@@ -208,7 +210,7 @@ export default function NovelPreviewModal({
             onClick={onClose}
             className="px-6 md:px-8 py-3 md:py-4 h-12 md:h-14 bg-muted text-foreground font-bold rounded-lg hover:scale-105 hover:bg-border transition-all"
           >
-            关闭
+            {t('preview.close')}
           </button>
           <div className="relative group/btn">
             <button
@@ -228,7 +230,7 @@ export default function NovelPreviewModal({
                 WebkitTapHighlightColor: 'transparent',
               }}
             >
-              立即阅读
+              {t('preview.readNow')}
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>
@@ -252,13 +254,13 @@ export default function NovelPreviewModal({
                     onClick={handleReadNowInCurrentTab}
                     className="w-full px-6 py-3 text-left font-bold text-foreground hover:bg-primary hover:text-white transition-colors"
                   >
-                    当前标签页打开
+                    {t('preview.openCurrentTab')}
                   </button>
                   <button
                     onClick={handleOpenInNewTab}
                     className="w-full px-6 py-3 text-left font-bold text-foreground hover:bg-primary hover:text-white transition-colors"
                   >
-                    新标签页打开
+                    {t('preview.openNewTab')}
                   </button>
                 </div>
               </>

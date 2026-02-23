@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { NovelSeries } from '../../hooks/useNovelDetail'
+import { useI18n } from '../../i18n/useI18n'
 
 type NavActionType = 'page' | 'series'
 
@@ -21,6 +22,7 @@ export default function NovelPageNav({
   onGoToPage,
   series,
 }: NovelPageNavProps) {
+  const { t } = useI18n()
   const [pageInput, setPageInput] = useState('')
 
   const isOnFirstPage = currentPage === 1
@@ -59,26 +61,26 @@ export default function NovelPageNav({
           <Link
             to={`/novel/${series.prev_novel.id}`}
             className={`h-12 min-w-[48px] px-3 md:h-14 md:min-w-[56px] md:px-4 font-bold rounded-lg flex flex-col items-center justify-center gap-0.5 transition-all ${getButtonStyle('series', false)}`}
-            title={`上一篇: ${series.prev_novel.title}`}
-            aria-label={`跳转到系列上一篇: ${series.prev_novel.title}`}
+            title={`${t('pageNav.prevSeriesPrefix')}: ${series.prev_novel.title}`}
+            aria-label={`${t('pageNav.prevSeriesAriaPrefix')}: ${series.prev_novel.title}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
             </svg>
-            <span className="text-[9px] md:text-[10px] leading-none tracking-widest uppercase font-black">篇章</span>
+            <span className="text-[9px] md:text-[10px] leading-none tracking-widest uppercase font-black">{t('pageNav.seriesBadge')}</span>
           </Link>
         ) : (
           <button
             onClick={onPrevPage}
             disabled={isPrevDisabled}
             className={`h-12 w-12 md:h-14 md:w-14 font-black rounded-lg flex flex-col items-center justify-center gap-0.5 transition-all ${getButtonStyle('page', isPrevDisabled)}`}
-            title="上一页"
-            aria-label="上一页"
+            title={t('pageNav.prevPage')}
+            aria-label={t('pageNav.prevPage')}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
-            <span className="text-[9px] md:text-[10px] leading-none tracking-widest uppercase font-black">分页</span>
+            <span className="text-[9px] md:text-[10px] leading-none tracking-widest uppercase font-black">{t('pageNav.pageBadge')}</span>
           </button>
         )}
 
@@ -101,26 +103,26 @@ export default function NovelPageNav({
           <Link
             to={`/novel/${series.next_novel.id}`}
             className={`h-12 min-w-[48px] px-3 md:h-14 md:min-w-[56px] md:px-4 font-bold rounded-lg flex flex-col items-center justify-center gap-0.5 transition-all ${getButtonStyle('series', false)}`}
-            title={`下一篇: ${series.next_novel.title}`}
-            aria-label={`跳转到系列下一篇: ${series.next_novel.title}`}
+            title={`${t('pageNav.nextSeriesPrefix')}: ${series.next_novel.title}`}
+            aria-label={`${t('pageNav.nextSeriesAriaPrefix')}: ${series.next_novel.title}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
             </svg>
-            <span className="text-[9px] md:text-[10px] leading-none tracking-widest uppercase font-black">篇章</span>
+            <span className="text-[9px] md:text-[10px] leading-none tracking-widest uppercase font-black">{t('pageNav.seriesBadge')}</span>
           </Link>
         ) : (
           <button
             onClick={onNextPage}
             disabled={isNextDisabled}
             className={`h-12 w-12 md:h-14 md:w-14 font-black rounded-lg flex flex-col items-center justify-center gap-0.5 transition-all ${getButtonStyle('page', isNextDisabled)}`}
-            title="下一页"
-            aria-label="下一页"
+            title={t('pageNav.nextPage')}
+            aria-label={t('pageNav.nextPage')}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
-            <span className="text-[9px] md:text-[10px] leading-none tracking-widest uppercase font-black">分页</span>
+            <span className="text-[9px] md:text-[10px] leading-none tracking-widest uppercase font-black">{t('pageNav.pageBadge')}</span>
           </button>
         )}
       </div>

@@ -5,11 +5,14 @@ import NovelPreviewModal from '../components/novel/NovelPreviewModal'
 import Pagination from '../components/common/Pagination'
 import { Novel } from '../types/novel'
 import { api } from '../utils/api'
+import { useI18n } from '../i18n/useI18n'
 
 export default function ListPage() {
+  const { t, formatNumber } = useI18n()
+
   useEffect(() => {
-    document.title = '我的收藏 - Pixvel'
-  }, [])
+    document.title = t('list.documentTitleDefault')
+  }, [t])
 
   const [urlState, setUrlState] = useURLState({ page: 1 })
   const [novels, setNovels] = useState<Novel[]>([])
@@ -37,7 +40,7 @@ export default function ListPage() {
       setNovels(response.novels)
       setTotal(response.total)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载收藏失败')
+      setError(err instanceof Error ? err.message : t('list.loadErrorFallback'))
     } finally {
       setIsLoading(false)
     }
@@ -59,10 +62,10 @@ export default function ListPage() {
       <div className="bg-primary pt-12 pb-16 md:pt-20 md:pb-32 px-4 mb-[-2.5rem] md:mb-[-4rem]">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-2xl md:text-6xl font-bold text-white mb-2 tracking-tight">
-            我的收藏
+            {t('list.title')}
           </h1>
           <p className="text-white/80 text-sm md:text-xl font-medium max-w-2xl">
-            随时开启您的下一次阅读旅程
+            {t('list.subtitle')}
           </p>
         </div>
       </div>
@@ -80,13 +83,13 @@ export default function ListPage() {
               <div className="inline-block animate-bounce h-12 w-12 md:h-16 md:w-16 bg-primary rounded-lg flex items-center justify-center">
                 <div className="w-6 h-6 md:w-8 md:h-8 rounded-full border-4 border-white border-t-transparent animate-spin"></div>
               </div>
-              <p className="mt-4 md:mt-6 text-lg md:text-2xl font-bold text-primary uppercase tracking-widest">加载中...</p>
+              <p className="mt-4 md:mt-6 text-lg md:text-2xl font-bold text-primary uppercase tracking-widest">{t('list.loading')}</p>
             </div>
           ) : novels.length > 0 ? (
             <>
               <div className="mb-4 md:mb-6 flex items-center justify-between">
                 <div className="text-foreground/40 font-bold uppercase tracking-widest text-[10px] md:text-xs">
-                  共 {total.toLocaleString()} 个收藏
+                  {t('list.total').replace('{count}', formatNumber(total))}
                 </div>
               </div>
 
@@ -111,12 +114,12 @@ export default function ListPage() {
                   </svg>
                 </div>
               </div>
-              <p className="text-xl md:text-2xl font-bold text-foreground/30 uppercase mb-6">您还没有收藏任何小说</p>
+              <p className="text-xl md:text-2xl font-bold text-foreground/30 uppercase mb-6">{t('list.empty')}</p>
               <button
                 onClick={() => window.location.href = '/search'}
                 className="px-8 py-3 md:px-10 md:py-4 bg-primary text-white font-bold rounded-lg hover:scale-105 transition-all"
               >
-                去发现新作品
+                {t('list.discover')}
               </button>
             </div>
           )}

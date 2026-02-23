@@ -1,10 +1,13 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useI18n } from '../i18n/useI18n';
 
 export default function WelcomePage() {
+  const { t } = useI18n();
+
   useEffect(() => {
-    document.title = '欢迎使用 Pixvel';
-  }, []);
+    document.title = t('welcome.documentTitleDefault');
+  }, [t]);
   return (
     <div className="min-h-screen bg-primary flex flex-col items-center justify-center p-6 overflow-hidden relative">
       {/* Decorative geometric shapes */}
@@ -16,14 +19,14 @@ export default function WelcomePage() {
           Pixvel
         </h1>
         <p className="text-foreground/40 mb-12 text-xl md:text-2xl font-black uppercase tracking-widest leading-tight">
-          简洁、优雅、大胆的<br />Pixiv 小说阅读器
+          {t('welcome.subtitle')}<br />{t('welcome.subtitleLine2')}
         </p>
         
         <Link
           to="/setup"
           className="block w-full h-20 flex items-center justify-center bg-primary text-white py-4 px-10 rounded-xl font-black hover:scale-105 active:scale-95 transition-all text-xl md:text-2xl uppercase tracking-widest"
         >
-          开始使用
+          {t('welcome.start')}
         </Link>
       </div>
     </div>
