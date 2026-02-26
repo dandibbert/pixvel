@@ -11,6 +11,10 @@ export const messages: Record<Locale, Record<string, string>> = {
     'common.errorTitle': '出错了',
     'common.noData': '暂无数据',
     'common.backHome': '返回首页',
+    'common.characters': '字',
+    'common.description': '简介',
+    'common.tags': '标签',
+    'common.created': '创建时间',
 
     'search.title': '搜索小说',
     'search.subtitle': '输入关键词、作者名或标签来查找您喜欢的小说',
@@ -67,6 +71,7 @@ export const messages: Record<Locale, Record<string, string>> = {
     'reader.notFound': '小说不存在',
     'reader.contentEmptyError': '小说内容为空',
     'reader.loadFailedError': '加载小说失败',
+    'reader.novelDetails': '小说详情',
 
     'author.documentTitleDefault': '作者作品 - Pixvel',
     'author.documentTitleSuffix': ' - 作者 - Pixvel',
@@ -157,6 +162,10 @@ export const messages: Record<Locale, Record<string, string>> = {
     'common.errorTitle': 'エラー',
     'common.noData': 'データがありません',
     'common.backHome': 'ホームに戻る',
+    'common.characters': '文字',
+    'common.description': '説明',
+    'common.tags': 'タグ',
+    'common.created': '作成日',
 
     'search.title': '小説検索',
     'search.subtitle': 'キーワード・作者名・タグでお気に入りの小説を探せます',
@@ -213,6 +222,7 @@ export const messages: Record<Locale, Record<string, string>> = {
     'reader.notFound': '小説が見つかりません',
     'reader.contentEmptyError': '小説本文が空です',
     'reader.loadFailedError': '小説の読み込みに失敗しました',
+    'reader.novelDetails': '小説詳細',
 
     'author.documentTitleDefault': '著者作品 - Pixvel',
     'author.documentTitleSuffix': ' - 著者 - Pixvel',
