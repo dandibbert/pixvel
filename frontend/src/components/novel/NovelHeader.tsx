@@ -4,9 +4,11 @@ import { NovelDetail } from '../../types/novel'
 
 interface NovelHeaderProps {
   novel: NovelDetail
+  onTitleClick?: () => void
+  onRefresh?: () => void
 }
 
-export default function NovelHeader({ novel }: NovelHeaderProps) {
+export default function NovelHeader({ novel, onTitleClick, onRefresh }: NovelHeaderProps) {
   const navigate = useNavigate()
   const [isVisible, setIsVisible] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
@@ -44,7 +46,12 @@ export default function NovelHeader({ novel }: NovelHeaderProps) {
         </button>
 
         <div className="flex-1 min-w-0">
-          <h1 className="text-sm md:text-base font-black text-foreground truncate leading-tight tracking-tight">{novel.title}</h1>
+          <h1
+            className="text-sm md:text-base font-black text-foreground truncate leading-tight tracking-tight cursor-pointer hover:text-primary transition-colors"
+            onClick={onTitleClick}
+          >
+            {novel.title}
+          </h1>
           <button
             className="text-[10px] font-black text-primary uppercase tracking-widest truncate hover:text-primary/70 transition-colors"
             onClick={() => navigate(`/author/${novel.author.id}`)}
@@ -52,6 +59,19 @@ export default function NovelHeader({ novel }: NovelHeaderProps) {
             {novel.author.name}
           </button>
         </div>
+
+        {/* Refresh button */}
+        {onRefresh && (
+          <button
+            onClick={onRefresh}
+            className="text-foreground/40 hover:text-primary p-2 rounded-lg bg-muted transition-all"
+            title="Refresh"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        )}
 
         <button 
           onClick={() => navigate('/')}
