@@ -38,9 +38,9 @@ export default function NovelDetailModal({ novel, isOpen, onClose }: NovelDetail
         <div className="p-6 space-y-6">
           {/* Cover and basic info */}
           <div className="flex gap-4">
-            {novel.coverUrl && (
+            {novel.coverImage && (
               <img
-                src={novel.coverUrl}
+                src={novel.coverImage}
                 alt={novel.title}
                 className="w-32 h-32 object-cover rounded-lg border-2 border-muted"
               />
@@ -50,8 +50,8 @@ export default function NovelDetailModal({ novel, isOpen, onClose }: NovelDetail
               <p className="text-sm text-foreground/60">{novel.author.name}</p>
               <div className="flex gap-4 text-sm text-foreground/60">
                 <span>📖 {novel.textLength?.toLocaleString()} {t('common.characters')}</span>
-                <span>❤️ {novel.bookmarkCount?.toLocaleString()}</span>
-                <span>👁️ {novel.viewCount?.toLocaleString()}</span>
+                <span>❤️ {novel.totalBookmarks?.toLocaleString()}</span>
+                <span>👁️ {novel.totalViews?.toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -82,9 +82,9 @@ export default function NovelDetailModal({ novel, isOpen, onClose }: NovelDetail
           )}
 
           {/* Creation date */}
-          {novel.createDate && (
+          {novel.createdAt && (
             <div className="text-sm text-foreground/60">
-              {t('common.created')}: {new Date(novel.createDate).toLocaleDateString()}
+              {t('common.created')}: {new Date(novel.createdAt).toLocaleDateString()}
             </div>
           )}
         </div>
