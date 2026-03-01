@@ -28,6 +28,7 @@ yarn-error.log*
 # Local tool state
 .omc/
 .claude/
+.worktrees/
 
 # Deno cache (optional local cache)
 .deno/
