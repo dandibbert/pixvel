@@ -94,7 +94,7 @@ export default function NovelReader({ series }: NovelReaderProps) {
 
       <main className="w-full max-w-4xl mx-auto px-4 md:px-6 pt-12 pb-28 md:pb-32 flex-1">
         <article className="bg-white rounded-xl p-8 md:p-12 lg:p-20 border-b-8 border-muted">
-          <NovelContent content={currentPageContent} />
+          <NovelContent content={currentPageContent} onJumpToPage={goToPage} />
         </article>
       </main>
 
