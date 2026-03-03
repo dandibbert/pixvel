@@ -2,9 +2,10 @@ import { parseNovelText, ParsedElement } from '../../utils/novelTextParser'
 
 interface NovelContentProps {
   content: string
+  onJumpToPage?: (page: number) => void
 }
 
-export default function NovelContent({ content }: NovelContentProps) {
+export default function NovelContent({ content, onJumpToPage }: NovelContentProps) {
   const elements = parseNovelText(content)
 
   const renderElement = (element: ParsedElement, index: number) => {
@@ -40,6 +41,20 @@ export default function NovelContent({ content }: NovelContentProps) {
           >
             {element.metadata?.linkText}
           </a>
+        )
+
+      case 'jump':
+        if (!onJumpToPage || !element.metadata?.jumpPage) {
+          return <span key={index}>[jump:{element.metadata?.jumpPage}]</span>
+        }
+        return (
+          <button
+            key={index}
+            className="text-pixiv-blue underline hover:text-blue-600 cursor-pointer bg-transparent border-none p-0 font-inherit"
+            onClick={() => onJumpToPage(element.metadata!.jumpPage!)}
+          >
+            [jump:{element.metadata.jumpPage}]
+          </button>
         )
 
       case 'text':
