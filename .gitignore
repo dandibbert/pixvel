@@ -33,3 +33,6 @@ yarn-error.log*
 # Deno cache (optional local cache)
 .deno/
 deno_dir/
+
+# Local docs drafts
+docs/plans/
