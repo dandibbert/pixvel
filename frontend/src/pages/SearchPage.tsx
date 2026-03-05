@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useURLState } from '../hooks/useURLState'
 import { useSearchStore } from '../stores/searchStore'
 import { useI18n } from '../i18n/useI18n'
@@ -6,12 +6,17 @@ import SearchBar from '../components/search/SearchBar'
 import FilterPanel from '../components/search/FilterPanel'
 import SortControls from '../components/search/SortControls'
 import NovelGrid from '../components/novel/NovelGrid'
-import NovelPreviewModal from '../components/novel/NovelPreviewModal'
+import NovelPreviewModal, {
+  type NovelPreviewModalProps,
+} from '../components/novel/NovelPreviewModal'
 import Pagination from '../components/common/Pagination'
-import { Novel, SearchHistoryEntry } from '../types/search'
+import { useSearchKeywordRules } from '../contexts/SearchKeywordRulesContext'
+import { evaluateNovelKeywordMatch } from '../utils/keywordFilter'
+import { Novel, SearchHistoryEntry, type NovelKeywordMatchResult } from '../types/search'
 
 type SearchTarget = 'partial_match_for_tags' | 'exact_match_for_tags' | 'text' | 'keyword'
 type SearchSort = 'date_desc' | 'date_asc' | 'popular_desc'
+type NovelMatchMap = Readonly<Record<string, NovelKeywordMatchResult>>
 
 export default function SearchPage() {
   const { t, formatNumber, searchTargetLabel, sortLabel } = useI18n()
@@ -37,6 +42,8 @@ export default function SearchPage() {
     removeFromHistory,
     clearHistory,
   } = useSearchStore()
+  const { blockedWords, highlightWords, revealedBlockedIds, revealBlockedId } =
+    useSearchKeywordRules()
 
   const [query, setLocalQuery] = useState(urlState.q || '')
   const [searchTarget, setSearchTarget] = useState<SearchTarget>(
@@ -50,6 +57,45 @@ export default function SearchPage() {
   const [showHistory, setShowHistory] = useState(false)
 
   const totalPages = Math.ceil(total / 20)
+
+  const keywordMatchMap = useMemo<NovelMatchMap>(() => {
+    if (results.length === 0) return {}
+
+    return results.reduce<Record<string, NovelKeywordMatchResult>>((map, novel) => {
+      map[novel.id] = evaluateNovelKeywordMatch(novel, blockedWords, highlightWords)
+      return map
+    }, {})
+  }, [results, blockedWords, highlightWords])
+
+  const displayKeywordMatchMap = useMemo<NovelMatchMap>(() => {
+    if (results.length === 0) return {}
+
+    return results.reduce<Record<string, NovelKeywordMatchResult>>((map, novel) => {
+      const match = keywordMatchMap[novel.id]
+      if (!match) return map
+
+      map[novel.id] = {
+        ...match,
+        isBlocked: match.isBlocked && !revealedBlockedIds.has(novel.id),
+      }
+
+      return map
+    }, {})
+  }, [results, keywordMatchMap, revealedBlockedIds])
+
+  const handleRevealBlocked = useCallback((novelId: string) => {
+    revealBlockedId(novelId)
+  }, [revealBlockedId])
+
+  const selectedNovelMatch = selectedNovel ? displayKeywordMatchMap[selectedNovel.id] : undefined
+  const previewModalProps: NovelPreviewModalProps = {
+    novel: selectedNovel,
+    isOpen: isModalOpen,
+    onClose: () => setIsModalOpen(false),
+    keywordMatch: selectedNovelMatch,
+    onRevealBlocked: handleRevealBlocked,
+    highlightWords,
+  }
 
   useEffect(() => {
     const searchQuery = urlState.q?.trim()
@@ -273,7 +319,12 @@ export default function SearchPage() {
                   {t('search.resultsFoundPrefix')} {formatNumber(total)} {t('search.resultsFoundSuffix')}
                 </div>
               </div>
-              <NovelGrid novels={results} onNovelClick={handleNovelClick} />
+              <NovelGrid
+                novels={results}
+                onNovelClick={handleNovelClick}
+                keywordMatchMap={displayKeywordMatchMap}
+                onRevealBlocked={handleRevealBlocked}
+              />
               {totalPages > 1 && (
                 <div className="mt-12 md:mt-16">
                   <Pagination
@@ -311,9 +362,7 @@ export default function SearchPage() {
       </div>
 
       <NovelPreviewModal
-        novel={selectedNovel}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        {...previewModalProps}
       />
     </div>
   )

@@ -1,4 +1,5 @@
 import DOMPurify from 'dompurify'
+import { type ReactNode } from 'react'
 import { Novel, NovelDetail } from '../../types/novel'
 import { Locale } from '../../stores/localeStore'
 
@@ -11,11 +12,46 @@ interface NovelDetailContentProps {
   onNavigateSeries?: (seriesId: string) => void
   statsMode?: 'preview' | 'reader'
   showCover?: boolean
+  highlightWords?: string[]
 }
 
 function getFirstChar(str: string) {
   const match = str.match(/./u)
   return match ? match[0] : str.charAt(0)
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function normalizeKeyword(value: string): string {
+  return value.trim().toLocaleLowerCase()
+}
+
+const MAX_HIGHLIGHT_TERMS = 20
+const MAX_HIGHLIGHT_TERM_LENGTH = 64
+
+function buildHighlightWords(words: ReadonlyArray<string>): string[] {
+  const seen = new Set<string>()
+  const deduped: string[] = []
+
+  for (const word of words) {
+    const trimmed = word.trim()
+    if (trimmed.length === 0) continue
+    if (trimmed.length > MAX_HIGHLIGHT_TERM_LENGTH) continue
+
+    const normalized = normalizeKeyword(trimmed)
+    if (seen.has(normalized)) continue
+
+    seen.add(normalized)
+    deduped.push(trimmed)
+
+    if (deduped.length >= MAX_HIGHLIGHT_TERMS) {
+      break
+    }
+  }
+
+  return deduped.sort((a, b) => b.length - a.length)
 }
 
 export default function NovelDetailContent({
@@ -27,6 +63,7 @@ export default function NovelDetailContent({
   onNavigateSeries,
   statsMode = 'preview',
   showCover = false,
+  highlightWords,
 }: NovelDetailContentProps) {
   const hasSeries = Boolean(novel.series?.id && novel.series.title)
   const tags = novel.tags ?? []
@@ -37,6 +74,32 @@ export default function NovelDetailContent({
   const descriptionClassName = statsMode === 'reader'
     ? 'text-foreground/70 leading-relaxed text-sm md:text-base bg-muted/30 p-4 md:p-6 rounded-lg whitespace-pre-wrap break-words overflow-wrap-anywhere'
     : 'text-foreground/70 leading-relaxed text-sm md:text-base bg-muted/30 p-4 md:p-6 rounded-lg break-words overflow-wrap-anywhere'
+  const highlightTerms = buildHighlightWords(highlightWords ?? [])
+  const highlightLookup = new Set(highlightTerms.map((word) => normalizeKeyword(word)))
+  const highlightClassName = 'px-0.5 rounded bg-primary/15 text-primary font-semibold'
+
+  const renderHighlightedText = (text: string): ReactNode => {
+    if (!text || highlightTerms.length === 0) {
+      return text
+    }
+
+    const pattern = new RegExp(`(${highlightTerms.map(escapeRegExp).join('|')})`, 'gi')
+    const parts = text.split(pattern)
+
+    return parts.map((part, index) => {
+      if (!part) return null
+
+      if (!highlightLookup.has(normalizeKeyword(part))) {
+        return <span key={`${part}-${index}`}>{part}</span>
+      }
+
+      return (
+        <span key={`${part}-${index}`} className={highlightClassName}>
+          {part}
+        </span>
+      )
+    })
+  }
 
   const authorAvatar = (
     <div className="w-10 h-10 md:w-12 md:h-12 bg-muted rounded-lg flex items-center justify-center font-bold text-primary text-lg md:text-xl">
@@ -45,14 +108,14 @@ export default function NovelDetailContent({
   )
 
   const authorName = (
-    <p className="font-bold text-foreground text-base md:text-lg">{novel.author.name}</p>
+    <p className="font-bold text-foreground text-base md:text-lg">{renderHighlightedText(novel.author.name)}</p>
   )
 
   return (
     <div className="space-y-6 md:space-y-8">
       <div>
         <h2 className="text-xl md:text-2xl font-bold text-foreground mb-4 leading-tight tracking-tight">
-          {novel.title}
+          {renderHighlightedText(novel.title)}
         </h2>
         <div className="flex gap-4 mb-6">
           {showCover && novel.coverImage && (
@@ -82,7 +145,7 @@ export default function NovelDetailContent({
                     className="font-bold text-foreground text-base md:text-lg hover:text-primary transition-colors"
                     onClick={() => onNavigateAuthor(novel.author.id)}
                   >
-                    {novel.author.name}
+                    {renderHighlightedText(novel.author.name)}
                   </button>
                 ) : (
                   authorName
@@ -152,12 +215,12 @@ export default function NovelDetailContent({
               onClick={() => onNavigateSeries(novel.series!.id)}
             >
               <span className="uppercase tracking-wider text-[10px]">{t('preview.series')}</span>
-              <span className="truncate">{novel.series!.title}</span>
+              <span className="truncate">{renderHighlightedText(novel.series!.title)}</span>
             </button>
           ) : (
             <div className="mb-6 w-full md:w-auto inline-flex items-center gap-3 px-4 py-2.5 bg-primary/10 text-primary rounded-lg font-bold">
               <span className="uppercase tracking-wider text-[10px]">{t('preview.series')}</span>
-              <span className="truncate">{novel.series!.title}</span>
+              <span className="truncate">{renderHighlightedText(novel.series!.title)}</span>
             </div>
           )
         )}
@@ -169,7 +232,7 @@ export default function NovelDetailContent({
                 key={tag}
                 className="px-3 py-1 bg-muted text-foreground/60 text-xs rounded font-semibold hover:bg-primary/10 hover:text-primary transition-all cursor-default"
               >
-                #{tag}
+                #{renderHighlightedText(tag)}
               </span>
             ))}
           </div>
