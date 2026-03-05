@@ -51,3 +51,17 @@ export interface Novel {
     title: string
   }
 }
+
+export interface NovelKeywordCorpus {
+  all: string
+  card: string
+  modal: string
+}
+
+export interface NovelKeywordMatchResult {
+  isBlocked: boolean
+  blockedHits: string[]
+  highlightHits: string[]
+  hasCardHighlight: boolean
+  hasModalOnlyHighlight: boolean
+}

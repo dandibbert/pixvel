@@ -42,7 +42,6 @@ export default function NovelDetailModal({ novel, isOpen, onClose }: NovelDetail
             t={t}
             formatNumber={formatNumber}
             statsMode="reader"
-            showCover
           />
         </div>
       </div>

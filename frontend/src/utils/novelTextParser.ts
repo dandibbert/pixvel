@@ -1,5 +1,5 @@
 export interface ParsedElement {
-  type: 'text' | 'chapter' | 'image' | 'ruby' | 'link'
+  type: 'text' | 'chapter' | 'image' | 'ruby' | 'link' | 'jump'
   content: string
   metadata?: {
     imageId?: string
@@ -7,6 +7,7 @@ export interface ParsedElement {
     rubyText?: string
     linkUrl?: string
     linkText?: string
+    jumpPage?: number
   }
 }
 
@@ -66,6 +67,15 @@ export function parseNovelText(text: string): ParsedElement[] {
         type: 'link' as const,
         content: '',
         metadata: { linkText: match[1], linkUrl: match[2] },
+      }),
+    },
+    {
+      regex: /\[jump:(\d+)\]/,
+      type: 'jump' as const,
+      handler: (match: RegExpMatchArray) => ({
+        type: 'jump' as const,
+        content: '',
+        metadata: { jumpPage: parseInt(match[1], 10) },
       }),
     },
   ]

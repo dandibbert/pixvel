@@ -3,18 +3,25 @@ import { useState, useRef, useEffect } from 'react'
 import Modal from '../common/Modal'
 import NovelDetailContent from './NovelDetailContent'
 import { Novel } from '../../types/novel'
+import { type NovelKeywordMatchResult } from '../../types/search'
 import { useI18n } from '../../i18n/useI18n'
 
-interface NovelPreviewModalProps {
+export interface NovelPreviewModalProps {
   novel: Novel | null
   isOpen: boolean
   onClose: () => void
+  keywordMatch?: NovelKeywordMatchResult
+  onRevealBlocked?: (novelId: string) => void
+  highlightWords?: string[]
 }
 
 export default function NovelPreviewModal({
   novel,
   isOpen,
   onClose,
+  keywordMatch,
+  onRevealBlocked,
+  highlightWords,
 }: NovelPreviewModalProps) {
   const { locale, t, formatNumber } = useI18n()
   const navigate = useNavigate()
@@ -48,6 +55,9 @@ export default function NovelPreviewModal({
   }, [isOpen])
 
   if (!novel) return null
+
+  const isBlockedForDisplay = keywordMatch?.isBlocked ?? false
+  const blockedHits = keywordMatch?.blockedHits ?? []
 
   const handleReadNowInCurrentTab = () => {
     closeContextMenu()
@@ -114,21 +124,44 @@ export default function NovelPreviewModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="lg">
       <div className="flex h-[78vh] md:h-[72vh] flex-col">
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1 md:pr-2 scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent hover:scrollbar-thumb-primary/40">
-          <NovelDetailContent
-            novel={novel}
-            locale={locale}
-            t={t}
-            formatNumber={formatNumber}
-            onNavigateAuthor={(authorId) => {
-              navigate(`/author/${authorId}`)
-              onClose()
-            }}
-            onNavigateSeries={(seriesId) => {
-              navigate(`/series/${seriesId}`)
-              onClose()
-            }}
-          />
+        <div className="relative min-h-0 flex-1 overflow-y-auto pr-1 md:pr-2 scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent hover:scrollbar-thumb-primary/40">
+          <div
+            className={isBlockedForDisplay ? 'pointer-events-none blur-[3px]' : ''}
+            aria-hidden={isBlockedForDisplay}
+          >
+            <NovelDetailContent
+              novel={novel}
+              locale={locale}
+              t={t}
+              formatNumber={formatNumber}
+              onNavigateAuthor={(authorId) => {
+                navigate(`/author/${authorId}`)
+                onClose()
+              }}
+              onNavigateSeries={(seriesId) => {
+                navigate(`/series/${seriesId}`)
+                onClose()
+              }}
+              highlightWords={highlightWords}
+            />
+          </div>
+          {isBlockedForDisplay && (
+            <button
+              type="button"
+              aria-label={t('search.keywordRules.reveal')}
+              className="absolute inset-0 z-10 flex items-center justify-center p-4 md:p-6 bg-background/65 hover:bg-background/75 transition-colors"
+              onClick={() => onRevealBlocked?.(novel.id)}
+            >
+              <span className="max-w-full rounded-lg border border-primary/25 bg-white/95 px-4 py-3 text-center shadow-sm">
+                <span className="block text-xs md:text-sm font-bold text-foreground/80 break-words">
+                  {t('search.keywordRules.blockReasonPrefix')} {blockedHits.join(', ')}
+                </span>
+                <span className="mt-1.5 block text-[11px] md:text-xs font-semibold text-primary uppercase tracking-wide">
+                  {t('search.keywordRules.reveal')}
+                </span>
+              </span>
+            </button>
+          )}
         </div>
 
         <div className="flex flex-col md:flex-row justify-end gap-3 md:gap-4 pt-4 md:pt-6 mt-4 md:mt-6 border-t border-border">
