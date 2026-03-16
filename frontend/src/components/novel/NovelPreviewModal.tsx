@@ -135,11 +135,11 @@ export default function NovelPreviewModal({
               t={t}
               formatNumber={formatNumber}
               onNavigateAuthor={(authorId) => {
-                navigate(`/author/${authorId}`)
+                window.open(`/author/${authorId}`, '_blank', 'noopener,noreferrer')
                 onClose()
               }}
               onNavigateSeries={(seriesId) => {
-                navigate(`/series/${seriesId}`)
+                window.open(`/series/${seriesId}`, '_blank', 'noopener,noreferrer')
                 onClose()
               }}
               highlightWords={highlightWords}

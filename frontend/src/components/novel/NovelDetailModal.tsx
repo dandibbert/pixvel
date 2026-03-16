@@ -41,6 +41,14 @@ export default function NovelDetailModal({ novel, isOpen, onClose }: NovelDetail
             locale={locale}
             t={t}
             formatNumber={formatNumber}
+            onNavigateAuthor={(authorId) => {
+              window.open(`/author/${authorId}`, '_blank', 'noopener,noreferrer')
+              onClose()
+            }}
+            onNavigateSeries={(seriesId) => {
+              window.open(`/series/${seriesId}`, '_blank', 'noopener,noreferrer')
+              onClose()
+            }}
             statsMode="reader"
           />
         </div>
