@@ -6,9 +6,19 @@ interface NovelHeaderProps {
   novel: NovelDetail
   onTitleClick?: () => void
   onRefresh?: () => void
+  onDownload?: () => void
+  canDownload?: boolean
+  downloadTitle?: string
 }
 
-export default function NovelHeader({ novel, onTitleClick, onRefresh }: NovelHeaderProps) {
+export default function NovelHeader({
+  novel,
+  onTitleClick,
+  onRefresh,
+  onDownload,
+  canDownload = false,
+  downloadTitle,
+}: NovelHeaderProps) {
   const navigate = useNavigate()
   const [isVisible, setIsVisible] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
@@ -73,7 +83,21 @@ export default function NovelHeader({ novel, onTitleClick, onRefresh }: NovelHea
           </button>
         )}
 
-        <button 
+        {onDownload && (
+          <button
+            onClick={onDownload}
+            disabled={!canDownload}
+            className="text-foreground/40 hover:text-primary p-2 rounded-lg bg-muted transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-foreground/40"
+            title={downloadTitle}
+            aria-label={downloadTitle}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4m5 8H3" />
+            </svg>
+          </button>
+        )}
+
+        <button
           onClick={() => navigate('/')}
           className="text-foreground/40 hover:text-primary p-2 rounded-lg bg-muted transition-all"
         >

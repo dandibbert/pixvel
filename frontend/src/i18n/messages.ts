@@ -82,6 +82,8 @@ export const messages: Record<Locale, Record<string, string>> = {
     'reader.contentEmptyError': '小说内容为空',
     'reader.loadFailedError': '加载小说失败',
     'reader.novelDetails': '小说详情',
+    'reader.downloadTxt': '下载 TXT',
+    'reader.downloadFailed': '下载失败',
 
     'author.documentTitleDefault': '作者作品 - Pixvel',
     'author.documentTitleSuffix': ' - 作者 - Pixvel',
@@ -243,6 +245,8 @@ export const messages: Record<Locale, Record<string, string>> = {
     'reader.contentEmptyError': '小説本文が空です',
     'reader.loadFailedError': '小説の読み込みに失敗しました',
     'reader.novelDetails': '小説詳細',
+    'reader.downloadTxt': 'TXT をダウンロード',
+    'reader.downloadFailed': 'ダウンロードに失敗しました',
 
     'author.documentTitleDefault': '著者作品 - Pixvel',
     'author.documentTitleSuffix': ' - 著者 - Pixvel',

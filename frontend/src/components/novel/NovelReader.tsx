@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useReaderStore } from '../../stores/readerStore'
 import { useNovelPagination } from '../../hooks/useNovelPagination'
 import { NovelSeries } from '../../hooks/useNovelDetail'
+import { useI18n } from '../../i18n/useI18n'
+import { downloadNovelTxt } from '../../utils/novelDownload'
 import NovelHeader from './NovelHeader'
 import NovelContent from './NovelContent'
 import NovelPageNav from './NovelPageNav'
@@ -15,11 +17,13 @@ interface NovelReaderProps {
 
 export default function NovelReader({ series }: NovelReaderProps) {
   const navigate = useNavigate()
+  const { t } = useI18n()
   const { novel, pages } = useReaderStore()
   const refreshNovel = useReaderStore((state) => state.refreshNovel)
   const { currentPage, totalPages, goToPage, goToNextPage, goToPrevPage } = useNovelPagination()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
 
   const isOnFirstPage = currentPage === 1
   const isOnLastPage = totalPages > 0 ? currentPage === totalPages : true
@@ -42,6 +46,24 @@ export default function NovelReader({ series }: NovelReaderProps) {
   const handleCloseModal = useCallback(() => {
     setIsModalOpen(false)
   }, [])
+
+  const canDownload = !!novel && pages.length > 0
+  const downloadTitle = t('reader.downloadTxt')
+
+  const handleDownload = useCallback(() => {
+    if (!novel || pages.length === 0) {
+      return
+    }
+
+    setDownloadError(null)
+
+    try {
+      downloadNovelTxt(novel, pages)
+    } catch (error) {
+      console.error('Download novel error:', error)
+      setDownloadError(t('reader.downloadFailed'))
+    }
+  }, [novel, pages, t])
 
   const handlePrev = useCallback(() => {
     if (canJumpPrevSeries && series?.prev_novel) {
@@ -89,6 +111,9 @@ export default function NovelReader({ series }: NovelReaderProps) {
         novel={novel}
         onTitleClick={handleTitleClick}
         onRefresh={handleRefresh}
+        onDownload={handleDownload}
+        canDownload={canDownload}
+        downloadTitle={downloadTitle}
       />
       <NovelSeriesNav series={series} />
 
@@ -112,6 +137,12 @@ export default function NovelReader({ series }: NovelReaderProps) {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
       />
+
+      {downloadError && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-red-100 text-red-700 px-4 py-2 rounded-full z-50 border border-red-200 text-sm">
+          {downloadError}
+        </div>
+      )}
 
       {/* Refresh indicator */}
       {isRefreshing && (
