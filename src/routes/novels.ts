@@ -6,6 +6,11 @@ import { getCookie } from "hono/helper/cookie/index.ts";
 import { PixivClient } from "../services/pixiv_client.ts";
 import { refreshAccessToken } from "../services/oauth_service.ts";
 import { getSession, updateTokens } from "../services/kv_store.ts";
+import {
+  buildNovelSearchApiParams,
+  buildNovelSearchPagination,
+  InvalidSearchParameterError,
+} from "../services/novel_search_params.ts";
 
 const novels = new Hono();
 
@@ -52,16 +57,6 @@ interface Novel {
   is_x_restricted: boolean;
 }
 
-interface SearchParams {
-  word: string;
-  sort?: string;
-  search_target?: string;
-  start_date?: string;
-  end_date?: string;
-  bookmark_num?: string;
-  page?: string;
-}
-
 /**
  * Parse next_url to extract page number
  */
@@ -93,37 +88,40 @@ novels.get("/search", async (c) => {
       return c.json({ error: "Invalid session" }, 401);
     }
 
-    // Parse query parameters
-    const searchParams: SearchParams = {
-      word: c.req.query("word") || "",
-      sort: c.req.query("sort") || "date_desc",
-      search_target: c.req.query("search_target") || "partial_match_for_tags",
-      start_date: c.req.query("start_date"),
-      end_date: c.req.query("end_date"),
-      bookmark_num: c.req.query("bookmark_num"),
-      page: c.req.query("page") || "1",
-    };
-
-    if (!searchParams.word) {
+    const word = c.req.query("word") || "";
+    if (!word) {
       return c.json({ error: "Missing search keyword" }, 400);
     }
 
-    // Build Pixiv API parameters
-    const params = new URLSearchParams({
-      word: searchParams.word,
-      sort: searchParams.sort || "date_desc",
-      search_target: searchParams.search_target || "partial_match_for_tags",
-      filter: "for_android",
-    });
+    let params: URLSearchParams;
+    try {
+      params = buildNovelSearchApiParams({
+        word,
+        sort: c.req.query("sort"),
+        search_target: c.req.query("search_target"),
+        start_date: c.req.query("start_date"),
+        end_date: c.req.query("end_date"),
+        bookmark_num: c.req.query("bookmark_num"),
+        bookmark_num_min: c.req.query("bookmark_num_min"),
+        bookmark_num_max: c.req.query("bookmark_num_max"),
+        text_length_min: c.req.query("text_length_min"),
+        include_potential_violation_works: c.req.query("include_potential_violation_works"),
+        include_translated_tag_results: c.req.query("include_translated_tag_results"),
+        is_original_only: c.req.query("is_original_only"),
+        is_replaceable_only: c.req.query("is_replaceable_only"),
+        merge_plain_keyword_results: c.req.query("merge_plain_keyword_results"),
+        search_ai_type: c.req.query("search_ai_type"),
+        lang: c.req.query("lang"),
+        page: c.req.query("page") || "1",
+      });
+    } catch (error) {
+      if (error instanceof InvalidSearchParameterError) {
+        return c.json({ error: error.message }, 400);
+      }
+      throw error;
+    }
 
-    if (searchParams.start_date) params.set("start_date", searchParams.start_date);
-    if (searchParams.end_date) params.set("end_date", searchParams.end_date);
-    if (searchParams.bookmark_num) params.set("bookmark_num_min", searchParams.bookmark_num);
-
-    // Convert page to offset (30 items per page)
-    const page = parseInt(searchParams.page || "1");
-    const offset = (page - 1) * 30;
-    if (offset > 0) params.set("offset", offset.toString());
+    const page = parseInt(c.req.query("page") || "1", 10);
 
     // Create Pixiv client with token refresh callback
     const client = new PixivClient(
@@ -175,34 +173,22 @@ novels.get("/search", async (c) => {
         : undefined,
     }));
 
-    // Pixiv API doesn't return exact total count
-    // We use search_span_limit (usually 5000) as the maximum
-    // If there's a next_url, we know there are more results
-    const maxResults = response.search_span_limit || 5000;
-    const itemsPerPage = 30;
-
-    // Calculate total pages based on whether there's more data
-    let totalPages: number;
-    if (hasMore) {
-      // If there's a next page, show at least current page + 1
-      // But cap at the maximum possible pages
-      totalPages = Math.min(Math.ceil(maxResults / itemsPerPage), page + 50);
-    } else {
-      // No more results, current page is the last page
-      totalPages = page;
-    }
+    const pagination = buildNovelSearchPagination({
+      page,
+      hasMore,
+      searchSpanLimit: response.search_span_limit,
+    });
 
     return c.json({
       novels: transformedNovels,
-      total: totalPages * itemsPerPage, // Estimated total for frontend calculation
+      total: pagination.total,
       page,
-      totalPages,
+      totalPages: pagination.totalPages,
     });
   } catch (error) {
     console.error("Search error:", error);
     return c.json({
       error: "Search failed",
-      message: (error as Error).message,
     }, 500);
   }
 });
@@ -694,14 +680,18 @@ novels.get("/:id/series", async (c) => {
       }
     }
 
-    return c.json({
-      id: seriesId.toString(),
-      title: seriesTitle,
-      ...(prevNovel ? { prev_novel: prevNovel } : {}),
-      ...(nextNovel ? { next_novel: nextNovel } : {}),
-    }, 200, {
-      "Cache-Control": "private, max-age=30",
-    });
+    return c.json(
+      {
+        id: seriesId.toString(),
+        title: seriesTitle,
+        ...(prevNovel ? { prev_novel: prevNovel } : {}),
+        ...(nextNovel ? { next_novel: nextNovel } : {}),
+      },
+      200,
+      {
+        "Cache-Control": "private, max-age=30",
+      },
+    );
   } catch (error) {
     console.error("Novel series error:", error);
     return c.json({
