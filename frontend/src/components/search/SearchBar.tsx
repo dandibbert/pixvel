@@ -8,6 +8,7 @@ interface SearchBarProps {
   onFocus?: () => void
   placeholder?: string
   debounceMs?: number
+  maxLength?: number
 }
 
 export default function SearchBar({
@@ -17,6 +18,7 @@ export default function SearchBar({
   onFocus,
   placeholder,
   debounceMs = 500,
+  maxLength,
 }: SearchBarProps) {
   const { t } = useI18n()
   const [localValue, setLocalValue] = useState(value)
@@ -48,6 +50,7 @@ export default function SearchBar({
           value={localValue}
           onChange={(e) => setLocalValue(e.target.value)}
           onFocus={onFocus}
+          maxLength={maxLength}
           placeholder={placeholder ?? t('search.placeholder')}
           className="w-full h-16 px-6 pl-14 pr-32 bg-muted text-foreground font-bold rounded-lg focus:outline-none focus:bg-white focus:ring-4 focus:ring-primary/20 transition-all text-lg"
         />

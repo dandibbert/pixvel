@@ -16,7 +16,32 @@ import { Novel, SearchHistoryEntry, type NovelKeywordMatchResult } from '../type
 
 type SearchTarget = 'partial_match_for_tags' | 'exact_match_for_tags' | 'text' | 'keyword'
 type SearchSort = 'date_desc' | 'date_asc' | 'popular_desc'
+type SearchLang = 'ja' | 'zh-CN'
+type SearchAiType = '0' | '1'
 type NovelMatchMap = Readonly<Record<string, NovelKeywordMatchResult>>
+
+const MAX_SEARCH_QUERY_LENGTH = 100
+
+function getCachedSearchTarget(searchTarget?: string): SearchTarget {
+  if (
+    searchTarget === 'partial_match_for_tags' ||
+    searchTarget === 'exact_match_for_tags' ||
+    searchTarget === 'text' ||
+    searchTarget === 'keyword'
+  ) {
+    return searchTarget
+  }
+
+  return 'keyword'
+}
+
+function getCachedLang(lang?: string): SearchLang {
+  return lang === 'zh-CN' ? 'zh-CN' : 'ja'
+}
+
+function getCachedSearchAiType(searchAiType?: string): SearchAiType {
+  return searchAiType === '0' ? '0' : '1'
+}
 
 export default function SearchPage() {
   const { t, formatNumber, searchTargetLabel, sortLabel } = useI18n()
@@ -30,6 +55,7 @@ export default function SearchPage() {
   const {
     results,
     total,
+    totalPages,
     isLoading,
     error,
     searchHistory,
@@ -47,16 +73,30 @@ export default function SearchPage() {
 
   const [query, setLocalQuery] = useState(urlState.q || '')
   const [searchTarget, setSearchTarget] = useState<SearchTarget>(
-    (urlState.target as SearchTarget) || cachedFilters.searchTarget || 'partial_match_for_tags'
+    (urlState.target as SearchTarget) || getCachedSearchTarget(cachedFilters.searchTarget)
   )
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
-  const [bookmarkNum, setBookmarkNum] = useState(0)
+  const [startDate, setStartDate] = useState(cachedFilters.startDate || '')
+  const [endDate, setEndDate] = useState(cachedFilters.endDate || '')
+  const [bookmarkNum, setBookmarkNum] = useState(cachedFilters.bookmarkNum || 0)
+  const [bookmarkNumMin, setBookmarkNumMin] = useState(cachedFilters.bookmarkNumMin || cachedFilters.bookmarkNum || 0)
+  const [bookmarkNumMax, setBookmarkNumMax] = useState(cachedFilters.bookmarkNumMax || 0)
+  const [textLengthMin, setTextLengthMin] = useState(cachedFilters.textLengthMin || 0)
+  const [lang, setLang] = useState<SearchLang>(getCachedLang(cachedFilters.lang))
+  const [includePotentialViolationWorks, setIncludePotentialViolationWorks] = useState(
+    cachedFilters.includePotentialViolationWorks ?? false,
+  )
+  const [includeTranslatedTagResults, setIncludeTranslatedTagResults] = useState(
+    cachedFilters.includeTranslatedTagResults ?? true,
+  )
+  const [isOriginalOnly, setIsOriginalOnly] = useState(cachedFilters.isOriginalOnly ?? false)
+  const [isReplaceableOnly, setIsReplaceableOnly] = useState(cachedFilters.isReplaceableOnly ?? false)
+  const [mergePlainKeywordResults, setMergePlainKeywordResults] = useState(
+    cachedFilters.mergePlainKeywordResults ?? true,
+  )
+  const [searchAiType, setSearchAiType] = useState<SearchAiType>(getCachedSearchAiType(cachedFilters.searchAiType))
   const [selectedNovel, setSelectedNovel] = useState<Novel | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
-
-  const totalPages = Math.ceil(total / 20)
 
   const keywordMatchMap = useMemo<NovelMatchMap>(() => {
     if (results.length === 0) return {}
@@ -106,23 +146,55 @@ export default function SearchPage() {
 
   useEffect(() => {
     if (urlState.q) {
-      const targetFromState = (urlState.target as SearchTarget) || cachedFilters.searchTarget || 'partial_match_for_tags'
+      const targetFromState = urlState.target
+        ? getCachedSearchTarget(urlState.target)
+        : getCachedSearchTarget(cachedFilters.searchTarget)
 
       setLocalQuery(urlState.q)
       setQuery(urlState.q)
       setSearchTarget(targetFromState)
 
+      const filterOptions = {
+        searchTarget: targetFromState,
+        startDate,
+        endDate,
+        bookmarkNum,
+        bookmarkNumMin,
+        bookmarkNumMax,
+        textLengthMin,
+        lang,
+        includePotentialViolationWorks,
+        includeTranslatedTagResults,
+        isOriginalOnly,
+        isReplaceableOnly,
+        mergePlainKeywordResults,
+        searchAiType,
+      }
+      const isCachedFilterState =
+        cachedFilters.searchTarget === filterOptions.searchTarget &&
+        (cachedFilters.startDate || '') === filterOptions.startDate &&
+        (cachedFilters.endDate || '') === filterOptions.endDate &&
+        (cachedFilters.bookmarkNum || 0) === filterOptions.bookmarkNum &&
+        (cachedFilters.bookmarkNumMin || cachedFilters.bookmarkNum || 0) === filterOptions.bookmarkNumMin &&
+        (cachedFilters.bookmarkNumMax || 0) === filterOptions.bookmarkNumMax &&
+        (cachedFilters.textLengthMin || 0) === filterOptions.textLengthMin &&
+        getCachedLang(cachedFilters.lang) === filterOptions.lang &&
+        (cachedFilters.includePotentialViolationWorks ?? false) === filterOptions.includePotentialViolationWorks &&
+        (cachedFilters.includeTranslatedTagResults ?? true) === filterOptions.includeTranslatedTagResults &&
+        (cachedFilters.isOriginalOnly ?? false) === filterOptions.isOriginalOnly &&
+        (cachedFilters.isReplaceableOnly ?? false) === filterOptions.isReplaceableOnly &&
+        (cachedFilters.mergePlainKeywordResults ?? true) === filterOptions.mergePlainKeywordResults &&
+        getCachedSearchAiType(cachedFilters.searchAiType) === filterOptions.searchAiType
+
       const isCachedQuery =
         cachedQuery === urlState.q &&
         cachedPage === urlState.page &&
         cachedFilters.sort === urlState.sort &&
-        cachedFilters.searchTarget === targetFromState &&
+        isCachedFilterState &&
         results.length > 0
 
       if (!isCachedQuery) {
-        handleSearch(urlState.q, urlState.page, urlState.sort as SearchSort, {
-          searchTarget: targetFromState,
-        })
+        handleSearch(urlState.q, urlState.page, urlState.sort as SearchSort, filterOptions)
       }
     }
   }, [])
@@ -136,6 +208,16 @@ export default function SearchPage() {
       startDate?: string
       endDate?: string
       bookmarkNum?: number
+      bookmarkNumMin?: number
+      bookmarkNumMax?: number
+      textLengthMin?: number
+      lang?: SearchLang
+      includePotentialViolationWorks?: boolean
+      includeTranslatedTagResults?: boolean
+      isOriginalOnly?: boolean
+      isReplaceableOnly?: boolean
+      mergePlainKeywordResults?: boolean
+      searchAiType?: SearchAiType
     }
   ) => {
     setShowHistory(false)
@@ -144,11 +226,24 @@ export default function SearchPage() {
     const sortToUse = searchSort !== undefined ? searchSort : (urlState.sort as SearchSort)
 
     const targetToUse = options?.searchTarget ?? searchTarget
-    const startDateToUse = options?.startDate ?? startDate
-    const endDateToUse = options?.endDate ?? endDate
+    const startDateToUse = options && 'startDate' in options ? options.startDate : startDate
+    const endDateToUse = options && 'endDate' in options ? options.endDate : endDate
     const bookmarkNumToUse = options?.bookmarkNum ?? bookmarkNum
+    const bookmarkNumMinToUse = options?.bookmarkNumMin ?? bookmarkNumMin
+    const bookmarkNumMaxToUse = options?.bookmarkNumMax ?? bookmarkNumMax
+    const textLengthMinToUse = options?.textLengthMin ?? textLengthMin
+    const langToUse = options?.lang ?? lang
+    const includePotentialViolationWorksToUse =
+      options?.includePotentialViolationWorks ?? includePotentialViolationWorks
+    const includeTranslatedTagResultsToUse =
+      options?.includeTranslatedTagResults ?? includeTranslatedTagResults
+    const isOriginalOnlyToUse = options?.isOriginalOnly ?? isOriginalOnly
+    const isReplaceableOnlyToUse = options?.isReplaceableOnly ?? isReplaceableOnly
+    const mergePlainKeywordResultsToUse =
+      options?.mergePlainKeywordResults ?? mergePlainKeywordResults
+    const searchAiTypeToUse = options?.searchAiType ?? searchAiType
 
-    if (!queryToUse.trim()) return
+    if (!queryToUse.trim() || queryToUse.length > MAX_SEARCH_QUERY_LENGTH) return
 
     setUrlState({ q: queryToUse, page: pageToUse, sort: sortToUse, target: targetToUse })
     setSearchTarget(targetToUse)
@@ -162,6 +257,16 @@ export default function SearchPage() {
       startDate: startDateToUse || undefined,
       endDate: endDateToUse || undefined,
       bookmarkNum: bookmarkNumToUse > 0 ? bookmarkNumToUse : undefined,
+      bookmarkNumMin: bookmarkNumMinToUse > 0 ? bookmarkNumMinToUse : undefined,
+      bookmarkNumMax: bookmarkNumMaxToUse > 0 ? bookmarkNumMaxToUse : undefined,
+      textLengthMin: textLengthMinToUse > 0 ? textLengthMinToUse : undefined,
+      lang: langToUse,
+      includePotentialViolationWorks: includePotentialViolationWorksToUse,
+      includeTranslatedTagResults: includeTranslatedTagResultsToUse,
+      isOriginalOnly: isOriginalOnlyToUse,
+      isReplaceableOnly: isReplaceableOnlyToUse,
+      mergePlainKeywordResults: mergePlainKeywordResultsToUse,
+      searchAiType: searchAiTypeToUse,
     })
   }
 
@@ -182,17 +287,48 @@ export default function SearchPage() {
   }
 
   const handleHistoryClick = (entry: SearchHistoryEntry) => {
+    const entryBookmarkMin = entry.bookmarkNumMin || entry.bookmarkNum || 0
+    const entryBookmarkMax = entry.bookmarkNumMax || 0
+    const entryTextLengthMin = entry.textLengthMin || 0
+    const entryLang = entry.lang || 'ja'
+    const entryIncludePotentialViolationWorks = entry.includePotentialViolationWorks ?? false
+    const entryIncludeTranslatedTagResults = entry.includeTranslatedTagResults ?? true
+    const entryIsOriginalOnly = entry.isOriginalOnly ?? false
+    const entryIsReplaceableOnly = entry.isReplaceableOnly ?? false
+    const entryMergePlainKeywordResults = entry.mergePlainKeywordResults ?? true
+    const entrySearchAiType = entry.searchAiType || '1'
+
     setLocalQuery(entry.query)
     setSearchTarget(entry.searchTarget)
     setStartDate(entry.startDate || '')
     setEndDate(entry.endDate || '')
     setBookmarkNum(entry.bookmarkNum || 0)
+    setBookmarkNumMin(entryBookmarkMin)
+    setBookmarkNumMax(entryBookmarkMax)
+    setTextLengthMin(entryTextLengthMin)
+    setLang(entryLang)
+    setIncludePotentialViolationWorks(entryIncludePotentialViolationWorks)
+    setIncludeTranslatedTagResults(entryIncludeTranslatedTagResults)
+    setIsOriginalOnly(entryIsOriginalOnly)
+    setIsReplaceableOnly(entryIsReplaceableOnly)
+    setMergePlainKeywordResults(entryMergePlainKeywordResults)
+    setSearchAiType(entrySearchAiType)
 
     handleSearch(entry.query, 1, entry.sort, {
       searchTarget: entry.searchTarget,
       startDate: entry.startDate,
       endDate: entry.endDate,
       bookmarkNum: entry.bookmarkNum,
+      bookmarkNumMin: entryBookmarkMin,
+      bookmarkNumMax: entryBookmarkMax,
+      textLengthMin: entryTextLengthMin,
+      lang: entryLang,
+      includePotentialViolationWorks: entryIncludePotentialViolationWorks,
+      includeTranslatedTagResults: entryIncludeTranslatedTagResults,
+      isOriginalOnly: entryIsOriginalOnly,
+      isReplaceableOnly: entryIsReplaceableOnly,
+      mergePlainKeywordResults: entryMergePlainKeywordResults,
+      searchAiType: entrySearchAiType,
     })
   }
 
@@ -216,6 +352,7 @@ export default function SearchPage() {
                 onChange={setLocalQuery}
                 onSearch={() => handleSearch()}
                 onFocus={() => setShowHistory(true)}
+                maxLength={MAX_SEARCH_QUERY_LENGTH}
               />
 
               {showHistory && searchHistory.length > 0 && (
@@ -281,10 +418,30 @@ export default function SearchPage() {
                 startDate={startDate}
                 endDate={endDate}
                 bookmarkNum={bookmarkNum}
+                bookmarkNumMin={bookmarkNumMin}
+                bookmarkNumMax={bookmarkNumMax}
+                textLengthMin={textLengthMin}
+                lang={lang}
+                includePotentialViolationWorks={includePotentialViolationWorks}
+                includeTranslatedTagResults={includeTranslatedTagResults}
+                isOriginalOnly={isOriginalOnly}
+                isReplaceableOnly={isReplaceableOnly}
+                mergePlainKeywordResults={mergePlainKeywordResults}
+                searchAiType={searchAiType}
                 onSearchTargetChange={setSearchTarget}
                 onStartDateChange={setStartDate}
                 onEndDateChange={setEndDate}
                 onBookmarkNumChange={setBookmarkNum}
+                onBookmarkNumMinChange={setBookmarkNumMin}
+                onBookmarkNumMaxChange={setBookmarkNumMax}
+                onTextLengthMinChange={setTextLengthMin}
+                onLangChange={setLang}
+                onIncludePotentialViolationWorksChange={setIncludePotentialViolationWorks}
+                onIncludeTranslatedTagResultsChange={setIncludeTranslatedTagResults}
+                onIsOriginalOnlyChange={setIsOriginalOnly}
+                onIsReplaceableOnlyChange={setIsReplaceableOnly}
+                onMergePlainKeywordResultsChange={setMergePlainKeywordResults}
+                onSearchAiTypeChange={setSearchAiType}
                 onApply={() => handleSearch()}
               />
               <SortControls value={urlState.sort as SearchSort} onChange={handleSortChange} />
