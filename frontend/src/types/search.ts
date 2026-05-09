@@ -9,6 +9,16 @@ export interface SearchParams {
   startDate?: string
   endDate?: string
   bookmarkNum?: number
+  bookmarkNumMin?: number
+  bookmarkNumMax?: number
+  textLengthMin?: number
+  lang?: 'ja' | 'zh-CN'
+  includePotentialViolationWorks?: boolean
+  includeTranslatedTagResults?: boolean
+  isOriginalOnly?: boolean
+  isReplaceableOnly?: boolean
+  mergePlainKeywordResults?: boolean
+  searchAiType?: '0' | '1'
 }
 
 export interface SearchHistoryEntry {
@@ -18,6 +28,16 @@ export interface SearchHistoryEntry {
   startDate?: string
   endDate?: string
   bookmarkNum?: number
+  bookmarkNumMin?: number
+  bookmarkNumMax?: number
+  textLengthMin?: number
+  lang?: 'ja' | 'zh-CN'
+  includePotentialViolationWorks?: boolean
+  includeTranslatedTagResults?: boolean
+  isOriginalOnly?: boolean
+  isReplaceableOnly?: boolean
+  mergePlainKeywordResults?: boolean
+  searchAiType?: '0' | '1'
   timestamp: number
 }
 
