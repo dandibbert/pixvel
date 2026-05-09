@@ -31,6 +31,67 @@ function normalizeKeyword(value: string): string {
 const MAX_HIGHLIGHT_TERMS = 20
 const MAX_HIGHLIGHT_TERM_LENGTH = 64
 
+function extractDescriptionNovelId(href: string | null): string | null {
+  if (!href) {
+    return null
+  }
+
+  const relativeMatch = href.match(/^novel\/(\d+)$/)
+  if (relativeMatch) {
+    return relativeMatch[1]
+  }
+
+  const pixivSchemeMatch = href.match(/^pixiv:\/\/novels\/(\d+)$/)
+  if (pixivSchemeMatch) {
+    return pixivSchemeMatch[1]
+  }
+
+  try {
+    const url = new URL(href)
+    const isPixivHost = url.hostname === 'pixiv.net' || url.hostname.endsWith('.pixiv.net')
+
+    if (!isPixivHost) {
+      return null
+    }
+
+    if (url.pathname.includes('/novel/show.php')) {
+      const id = url.searchParams.get('id')
+      return id && /^\d+$/.test(id) ? id : null
+    }
+
+    const absoluteMatch = url.pathname.match(/\/novel\/(\d+)\/?$/)
+    return absoluteMatch ? absoluteMatch[1] : null
+  } catch {
+    return null
+  }
+}
+
+function normalizeDescriptionLinks(html: string): string {
+  if (!html) {
+    return html
+  }
+
+  const document = new DOMParser().parseFromString(html, 'text/html')
+
+  document.querySelectorAll('a').forEach((link) => {
+    const novelId = extractDescriptionNovelId(link.getAttribute('href'))
+
+    if (novelId) {
+      link.setAttribute('href', `/novel/${novelId}`)
+      link.setAttribute('target', '_blank')
+    }
+
+    if (link.getAttribute('target') === '_blank') {
+      const relValues = new Set((link.getAttribute('rel') ?? '').split(/\s+/).filter(Boolean))
+      relValues.add('noopener')
+      relValues.add('noreferrer')
+      link.setAttribute('rel', Array.from(relValues).join(' '))
+    }
+  })
+
+  return document.body.innerHTML
+}
+
 function buildHighlightWords(words: ReadonlyArray<string>): string[] {
   const seen = new Set<string>()
   const deduped: string[] = []
@@ -70,7 +131,9 @@ export default function NovelDetailContent({
   const totalBookmarks = novel.totalBookmarks ?? 0
   const totalViews = novel.totalViews ?? 0
   const textLength = novel.textLength ?? 0
-  const sanitizedDescription = DOMPurify.sanitize(novel.description ?? '')
+  const sanitizedDescription = DOMPurify.sanitize(normalizeDescriptionLinks(novel.description ?? ''), {
+    ADD_ATTR: ['target'],
+  })
   const descriptionClassName = statsMode === 'reader'
     ? 'text-foreground/70 leading-relaxed text-sm md:text-base bg-muted/30 p-4 md:p-6 rounded-lg whitespace-pre-wrap break-words overflow-wrap-anywhere'
     : 'text-foreground/70 leading-relaxed text-sm md:text-base bg-muted/30 p-4 md:p-6 rounded-lg break-words overflow-wrap-anywhere'

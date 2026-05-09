@@ -18,6 +18,7 @@ export default function Header() {
   } = useSearchKeywordRules()
   const [isRulesPanelOpen, setIsRulesPanelOpen] = useState(false)
   const rulesPanelRef = useRef<HTMLDivElement | null>(null)
+  const rulesPanelId = 'header-keyword-rules-panel'
 
   const isSearchRoute = pathname.startsWith('/search')
   const ruleCount = useMemo(() => blockedWords.length + highlightWords.length, [blockedWords.length, highlightWords.length])
@@ -40,9 +41,17 @@ export default function Header() {
       }
     }
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsRulesPanelOpen(false)
+      }
+    }
+
     document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
     return () => {
       document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
     }
   }, [isRulesPanelOpen, isSearchRoute])
 
@@ -56,37 +65,52 @@ export default function Header() {
             </Link>
           </div>
 
-          <nav className="flex items-center space-x-3 md:space-x-5">
-            <Link
-              to="/search"
-              className="text-sm md:text-base font-semibold text-foreground hover:text-primary transition-all duration-200 min-h-[44px] flex items-center"
-            >
-              {t('header.search')}
-            </Link>
-            <Link
-              to="/history"
-              className="text-sm md:text-base font-semibold text-foreground hover:text-primary transition-all duration-200 min-h-[44px] flex items-center"
-            >
-              {t('header.history')}
-            </Link>
-            <div className="flex items-center gap-2 pl-1" ref={rulesPanelRef}>
+          <nav className="flex items-center gap-2 md:gap-3">
+            <div className="flex items-center rounded-lg border border-border/60 bg-muted/40 p-1">
+              <Link
+                to="/search"
+                aria-current={isSearchRoute ? 'page' : undefined}
+                className={`min-h-[44px] px-3 rounded-md text-sm font-semibold transition-all duration-200 flex items-center justify-center leading-none ${
+                  isSearchRoute ? 'bg-white text-primary shadow-sm' : 'text-foreground hover:text-primary'
+                }`}
+              >
+                {t('header.search')}
+              </Link>
+              <Link
+                to="/history"
+                aria-current={pathname.startsWith('/history') ? 'page' : undefined}
+                className={`min-h-[44px] px-3 rounded-md text-sm font-semibold transition-all duration-200 flex items-center justify-center leading-none ${
+                  pathname.startsWith('/history') ? 'bg-white text-primary shadow-sm' : 'text-foreground hover:text-primary'
+                }`}
+              >
+                {t('header.history')}
+              </Link>
+            </div>
+            <div className="flex items-center gap-2" ref={rulesPanelRef}>
               {isSearchRoute && (
                 <div className="relative">
                   <button
                     type="button"
                     onClick={() => setIsRulesPanelOpen((previous) => !previous)}
+                    aria-controls={rulesPanelId}
                     aria-expanded={isRulesPanelOpen}
                     aria-label={t('search.keywordRules.button')}
-                    className="min-h-[44px] px-3 md:px-3.5 rounded-lg bg-muted text-xs md:text-sm font-semibold text-foreground border border-border/60 hover:border-primary/50 hover:text-primary transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 flex items-center gap-2"
+                    title={t('search.keywordRules.button')}
+                    className="min-h-[44px] px-3 rounded-lg bg-muted text-xs md:text-sm font-semibold text-foreground border border-border/60 hover:border-primary/50 hover:text-primary transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 flex items-center gap-2"
                   >
-                    <span>{t('search.keywordRules.button')}</span>
+                    <span>{t('header.rulesCompact')}</span>
                     <span className="px-1.5 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] md:text-xs leading-none">
-                      {t('search.keywordRules.badge')} {ruleCount}
+                      {ruleCount}
                     </span>
                   </button>
 
                   {isRulesPanelOpen && (
-                    <div className="absolute right-0 mt-2 w-[min(90vw,20rem)] rounded-xl border border-border/70 bg-white shadow-xl p-3 md:p-4">
+                    <div
+                      id={rulesPanelId}
+                      role="dialog"
+                      aria-label={t('search.keywordRules.button')}
+                      className="absolute right-0 mt-2 w-[min(90vw,20rem)] rounded-xl border border-border/70 bg-white shadow-xl p-3 md:p-4"
+                    >
                       <div className="space-y-3">
                         <label className="block">
                           <span className="block text-xs font-semibold text-foreground/80 mb-1">
