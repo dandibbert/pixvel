@@ -1,6 +1,5 @@
-import { act } from 'react'
-import { createRoot, Root } from 'react-dom/client'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { clickButtonByText, getTextByTestId, renderReactElement } from '../test/domTestUtils'
 import {
   SearchKeywordRulesProvider,
   useSearchKeywordRules,
@@ -55,39 +54,11 @@ function RulesHarness() {
 }
 
 function renderRulesProvider() {
-  const container = document.createElement('div')
-  document.body.appendChild(container)
-
-  const root = createRoot(container)
-
-  act(() => {
-    root.render(
-      <SearchKeywordRulesProvider>
-        <RulesHarness />
-      </SearchKeywordRulesProvider>,
-    )
-  })
-
-  return { container, root }
-}
-
-function unmount(root: Root, container: HTMLElement) {
-  act(() => root.unmount())
-  container.remove()
-}
-
-function getText(container: HTMLElement, testId: string) {
-  return container.querySelector(`[data-testid="${testId}"]`)?.textContent ?? ''
-}
-
-function getButton(container: HTMLElement, text: string) {
-  const button = Array.from(container.querySelectorAll('button')).find((element) => element.textContent === text)
-
-  if (!(button instanceof HTMLButtonElement)) {
-    throw new Error(`Button "${text}" was not found`)
-  }
-
-  return button
+  return renderReactElement(
+    <SearchKeywordRulesProvider>
+      <RulesHarness />
+    </SearchKeywordRulesProvider>,
+  )
 }
 
 describe('SearchKeywordRulesContext', () => {
@@ -100,24 +71,22 @@ describe('SearchKeywordRulesContext', () => {
   it('restores keyword rule inputs after remounting the provider', () => {
     const firstRender = renderRulesProvider()
 
-    act(() => {
-      getButton(firstRender.container, 'Set blocked').click()
-      getButton(firstRender.container, 'Set highlight').click()
-    })
+    clickButtonByText(firstRender.container, 'Set blocked')
+    clickButtonByText(firstRender.container, 'Set highlight')
 
-    expect(getText(firstRender.container, 'blocked-input')).toBe('ネタバレ, 地雷')
-    expect(getText(firstRender.container, 'highlight-input')).toBe('甘い')
+    expect(getTextByTestId(firstRender.container, 'blocked-input')).toBe('ネタバレ, 地雷')
+    expect(getTextByTestId(firstRender.container, 'highlight-input')).toBe('甘い')
 
-    unmount(firstRender.root, firstRender.container)
+    firstRender.unmount()
 
     const secondRender = renderRulesProvider()
 
-    expect(getText(secondRender.container, 'blocked-input')).toBe('ネタバレ, 地雷')
-    expect(getText(secondRender.container, 'highlight-input')).toBe('甘い')
-    expect(getText(secondRender.container, 'blocked-count')).toBe('2')
-    expect(getText(secondRender.container, 'highlight-count')).toBe('1')
+    expect(getTextByTestId(secondRender.container, 'blocked-input')).toBe('ネタバレ, 地雷')
+    expect(getTextByTestId(secondRender.container, 'highlight-input')).toBe('甘い')
+    expect(getTextByTestId(secondRender.container, 'blocked-count')).toBe('2')
+    expect(getTextByTestId(secondRender.container, 'highlight-count')).toBe('1')
 
-    unmount(secondRender.root, secondRender.container)
+    secondRender.unmount()
   })
 
   it('keeps keyword rules usable when localStorage throws', () => {
@@ -136,19 +105,17 @@ describe('SearchKeywordRulesContext', () => {
       },
     })
 
-    const { container, root } = renderRulesProvider()
+    const { container, unmount } = renderRulesProvider()
 
-    act(() => {
-      getButton(container, 'Set blocked').click()
-      getButton(container, 'Set highlight').click()
-    })
+    clickButtonByText(container, 'Set blocked')
+    clickButtonByText(container, 'Set highlight')
 
-    expect(getText(container, 'blocked-input')).toBe('ネタバレ, 地雷')
-    expect(getText(container, 'highlight-input')).toBe('甘い')
-    expect(getText(container, 'blocked-count')).toBe('2')
-    expect(getText(container, 'highlight-count')).toBe('1')
+    expect(getTextByTestId(container, 'blocked-input')).toBe('ネタバレ, 地雷')
+    expect(getTextByTestId(container, 'highlight-input')).toBe('甘い')
+    expect(getTextByTestId(container, 'blocked-count')).toBe('2')
+    expect(getTextByTestId(container, 'highlight-count')).toBe('1')
 
     installMemoryLocalStorage()
-    unmount(root, container)
+    unmount()
   })
 })

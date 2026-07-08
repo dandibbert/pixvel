@@ -2,6 +2,31 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { SearchParams, Novel, SearchHistoryEntry } from '../types/search'
 import { api } from '../utils/api'
+import { buildSearchFiltersState } from './searchFiltersModel'
+import {
+  buildClearedSearchResultsState,
+  buildSearchResultsState,
+  buildSearchResultsWithFiltersState,
+  type SearchApiResult,
+} from './searchResultsModel'
+import {
+  buildClearedSearchHistoryState,
+  buildRemovedSearchHistoryState,
+  buildSearchHistoryState,
+} from './searchHistoryModel'
+import {
+  buildSearchClearErrorState,
+  buildSearchErrorState,
+  buildSearchLoadingState,
+  buildSearchPageState,
+  buildSearchPersistSnapshot,
+  buildSearchQueryState,
+  type SearchPersistSnapshot,
+} from './searchStoreModel'
+import {
+  buildSearchLoadMoreApiParams,
+  buildSearchRequest,
+} from './searchRequestModel'
 
 interface SearchState {
   query: string
@@ -29,87 +54,8 @@ interface SearchState {
   clearError: () => void
 }
 
-type SearchApiParams = Record<string, string | number | boolean | undefined>
-type SearchApiResult = {
-  novels: Novel[]
-  total: number
-  page: number
-  totalPages: number
-}
-
-function buildSearchApiParams(searchParams: SearchParams): SearchApiParams {
-  const apiParams: SearchApiParams = {
-    word: searchParams.query,
-    page: searchParams.page,
-    sort: searchParams.sort,
-    search_target: searchParams.searchTarget || 'partial_match_for_tags',
-  }
-
-  if (searchParams.startDate) apiParams.start_date = searchParams.startDate
-  if (searchParams.endDate) apiParams.end_date = searchParams.endDate
-  if (searchParams.bookmarkNum && searchParams.bookmarkNum > 0) {
-    apiParams.bookmark_num = searchParams.bookmarkNum
-  }
-  if (searchParams.bookmarkNumMin && searchParams.bookmarkNumMin > 0) {
-    apiParams.bookmark_num_min = searchParams.bookmarkNumMin
-  }
-  if (searchParams.bookmarkNumMax && searchParams.bookmarkNumMax > 0) {
-    apiParams.bookmark_num_max = searchParams.bookmarkNumMax
-  }
-  if (searchParams.textLengthMin && searchParams.textLengthMin > 0) {
-    apiParams.text_length_min = searchParams.textLengthMin
-  }
-  if (searchParams.lang) apiParams.lang = searchParams.lang
-  if (searchParams.includePotentialViolationWorks !== undefined) {
-    apiParams.include_potential_violation_works = searchParams.includePotentialViolationWorks
-  }
-  if (searchParams.includeTranslatedTagResults !== undefined) {
-    apiParams.include_translated_tag_results = searchParams.includeTranslatedTagResults
-  }
-  if (searchParams.isOriginalOnly !== undefined) {
-    apiParams.is_original_only = searchParams.isOriginalOnly
-  }
-  if (searchParams.isReplaceableOnly !== undefined) {
-    apiParams.is_replaceable_only = searchParams.isReplaceableOnly
-  }
-  if (searchParams.mergePlainKeywordResults !== undefined) {
-    apiParams.merge_plain_keyword_results = searchParams.mergePlainKeywordResults
-  }
-  if (searchParams.searchAiType) apiParams.search_ai_type = searchParams.searchAiType
-
-  return apiParams
-}
-
-function hasSearchParam(params: Partial<SearchParams> | undefined, name: keyof SearchParams) {
-  return params !== undefined && Object.prototype.hasOwnProperty.call(params, name)
-}
-
-function isSameHistoryEntry(
-  item: SearchHistoryEntry,
-  entry: Omit<SearchHistoryEntry, 'timestamp'>,
-) {
-  return (
-    item.query === entry.query &&
-    item.searchTarget === entry.searchTarget &&
-    item.sort === entry.sort &&
-    item.startDate === entry.startDate &&
-    item.endDate === entry.endDate &&
-    item.bookmarkNum === entry.bookmarkNum &&
-    item.bookmarkNumMin === entry.bookmarkNumMin &&
-    item.bookmarkNumMax === entry.bookmarkNumMax &&
-    item.textLengthMin === entry.textLengthMin &&
-    item.lang === entry.lang &&
-    item.includePotentialViolationWorks === entry.includePotentialViolationWorks &&
-    item.includeTranslatedTagResults === entry.includeTranslatedTagResults &&
-    item.isOriginalOnly === entry.isOriginalOnly &&
-    item.isReplaceableOnly === entry.isReplaceableOnly &&
-    item.mergePlainKeywordResults === entry.mergePlainKeywordResults &&
-    item.searchAiType === entry.searchAiType
-  )
-}
-
 export const useSearchStore = create<SearchState>()(
-  persist(
+  persist<SearchState, [], [], SearchPersistSnapshot>(
     (set, get) => ({
       query: '',
       filters: {
@@ -129,126 +75,57 @@ export const useSearchStore = create<SearchState>()(
 
       addToHistory: (entry) => {
         set((state) => {
-          const newEntry = { ...entry, timestamp: Date.now() }
-          // Remove duplicates
-          const filteredHistory = state.searchHistory.filter((item) => {
-            return !isSameHistoryEntry(item, entry)
+          return buildSearchHistoryState({
+            searchHistory: state.searchHistory,
+            entry,
           })
-
-          return {
-            searchHistory: [newEntry, ...filteredHistory].slice(0, 10),
-          }
         })
       },
 
-      clearHistory: () => set({ searchHistory: [] }),
+      clearHistory: () => set(buildClearedSearchHistoryState()),
 
       removeFromHistory: (index) =>
-        set((state) => ({
-          searchHistory: state.searchHistory.filter((_, i) => i !== index),
-        })),
+        set((state) =>
+          buildRemovedSearchHistoryState({
+            searchHistory: state.searchHistory,
+            index,
+          })
+        ),
 
-      setQuery: (query) => set({ query }),
+      setQuery: (query) => set(buildSearchQueryState(query)),
 
       setFilters: (filters) =>
-        set((state) => ({
-          filters: { ...state.filters, ...filters },
-        })),
+        set((state) =>
+          buildSearchFiltersState({
+            currentFilters: state.filters,
+            filters,
+          })
+        ),
 
       search: async (params) => {
         const state = get()
-        const searchParams: SearchParams = {
-          query: params?.query ?? state.query,
-          page: params?.page ?? 1,
-          limit: params?.limit ?? state.limit,
-          sort: params?.sort ?? state.filters.sort,
-          tags: hasSearchParam(params, 'tags') ? params?.tags : state.filters.tags,
-          authorId: hasSearchParam(params, 'authorId') ? params?.authorId : state.filters.authorId,
-          searchTarget: params?.searchTarget ?? state.filters.searchTarget,
-          startDate: hasSearchParam(params, 'startDate') ? params?.startDate : state.filters.startDate,
-          endDate: hasSearchParam(params, 'endDate') ? params?.endDate : state.filters.endDate,
-          bookmarkNum: hasSearchParam(params, 'bookmarkNum') ? params?.bookmarkNum : state.filters.bookmarkNum,
-          bookmarkNumMin: hasSearchParam(params, 'bookmarkNumMin') ? params?.bookmarkNumMin : state.filters.bookmarkNumMin,
-          bookmarkNumMax: hasSearchParam(params, 'bookmarkNumMax') ? params?.bookmarkNumMax : state.filters.bookmarkNumMax,
-          textLengthMin: hasSearchParam(params, 'textLengthMin') ? params?.textLengthMin : state.filters.textLengthMin,
-          lang: hasSearchParam(params, 'lang') ? params?.lang : state.filters.lang,
-          includePotentialViolationWorks: hasSearchParam(params, 'includePotentialViolationWorks')
-            ? params?.includePotentialViolationWorks
-            : state.filters.includePotentialViolationWorks,
-          includeTranslatedTagResults: hasSearchParam(params, 'includeTranslatedTagResults')
-            ? params?.includeTranslatedTagResults
-            : state.filters.includeTranslatedTagResults,
-          isOriginalOnly: hasSearchParam(params, 'isOriginalOnly')
-            ? params?.isOriginalOnly
-            : state.filters.isOriginalOnly,
-          isReplaceableOnly: hasSearchParam(params, 'isReplaceableOnly')
-            ? params?.isReplaceableOnly
-            : state.filters.isReplaceableOnly,
-          mergePlainKeywordResults: hasSearchParam(params, 'mergePlainKeywordResults')
-            ? params?.mergePlainKeywordResults
-            : state.filters.mergePlainKeywordResults,
-          searchAiType: hasSearchParam(params, 'searchAiType') ? params?.searchAiType : state.filters.searchAiType,
-        }
+        const request = buildSearchRequest({
+          query: state.query,
+          limit: state.limit,
+          filters: state.filters,
+          params,
+        })
 
-        // Add to history if query is present and it's a fresh search (page 1)
-        if (searchParams.query && searchParams.page === 1) {
-          state.addToHistory({
-            query: searchParams.query,
-            sort: searchParams.sort || 'date_desc',
-            searchTarget: searchParams.searchTarget || 'partial_match_for_tags',
-            startDate: searchParams.startDate,
-            endDate: searchParams.endDate,
-            bookmarkNum: searchParams.bookmarkNum,
-            bookmarkNumMin: searchParams.bookmarkNumMin,
-            bookmarkNumMax: searchParams.bookmarkNumMax,
-            textLengthMin: searchParams.textLengthMin,
-            lang: searchParams.lang,
-            includePotentialViolationWorks: searchParams.includePotentialViolationWorks,
-            includeTranslatedTagResults: searchParams.includeTranslatedTagResults,
-            isOriginalOnly: searchParams.isOriginalOnly,
-            isReplaceableOnly: searchParams.isReplaceableOnly,
-            mergePlainKeywordResults: searchParams.mergePlainKeywordResults,
-            searchAiType: searchParams.searchAiType,
-          })
+        if (request.historyEntry) {
+          state.addToHistory(request.historyEntry)
         }
 
         try {
-          set({ isLoading: true, error: null })
+          set(buildSearchLoadingState())
 
-          const result = await api.get<SearchApiResult>('/novels/search', buildSearchApiParams(searchParams))
+          const result = await api.get<SearchApiResult>('/novels/search', request.apiParams)
 
-          set({
-            results: result.novels,
-            total: result.total,
-            page: result.page,
-            totalPages: result.totalPages,
-            hasMore: result.page < result.totalPages,
-            isLoading: false,
-            filters: {
-              ...state.filters,
-              page: searchParams.page,
-              sort: searchParams.sort,
-              searchTarget: searchParams.searchTarget,
-              startDate: searchParams.startDate,
-              endDate: searchParams.endDate,
-              bookmarkNum: searchParams.bookmarkNum,
-              bookmarkNumMin: searchParams.bookmarkNumMin,
-              bookmarkNumMax: searchParams.bookmarkNumMax,
-              textLengthMin: searchParams.textLengthMin,
-              lang: searchParams.lang,
-              includePotentialViolationWorks: searchParams.includePotentialViolationWorks,
-              includeTranslatedTagResults: searchParams.includeTranslatedTagResults,
-              isOriginalOnly: searchParams.isOriginalOnly,
-              isReplaceableOnly: searchParams.isReplaceableOnly,
-              mergePlainKeywordResults: searchParams.mergePlainKeywordResults,
-              searchAiType: searchParams.searchAiType,
-            },
-          })
+          set(buildSearchResultsWithFiltersState({
+            result,
+            filters: request.syncedFilters,
+          }))
         } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : 'Search failed',
-            isLoading: false,
-          })
+          set(buildSearchErrorState(error, 'Search failed'))
         }
       },
 
@@ -258,57 +135,31 @@ export const useSearchStore = create<SearchState>()(
 
         const nextPage = state.page + 1
         try {
-          set({ isLoading: true, error: null })
+          set(buildSearchLoadingState())
           const result = await api.get<SearchApiResult>(
             '/novels/search',
-            buildSearchApiParams({
+            buildSearchLoadMoreApiParams({
               query: state.query,
-              ...state.filters,
-              page: nextPage,
+              filters: state.filters,
+              nextPage,
             }),
           )
 
-          set({
-            results: [...state.results, ...result.novels],
-            total: result.total,
-            page: result.page,
-            totalPages: result.totalPages,
-            hasMore: result.page < result.totalPages,
-            isLoading: false,
-          })
+          set(buildSearchResultsState({ result, existingResults: state.results }))
         } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : 'Load more failed',
-            isLoading: false,
-          })
+          set(buildSearchErrorState(error, 'Load more failed'))
         }
       },
 
-      setPage: (page) => set({ page }),
+      setPage: (page) => set(buildSearchPageState(page)),
 
-      clearResults: () =>
-        set({
-          results: [],
-          total: 0,
-          page: 1,
-          totalPages: 1,
-          hasMore: false,
-        }),
+      clearResults: () => set(buildClearedSearchResultsState()),
 
-      clearError: () => set({ error: null }),
+      clearError: () => set(buildSearchClearErrorState()),
     }),
     {
       name: 'search-cache-storage',
-      partialize: (state) => ({
-        searchHistory: state.searchHistory,
-        query: state.query,
-        filters: state.filters,
-        results: state.results,
-        total: state.total,
-        page: state.page,
-        totalPages: state.totalPages,
-        hasMore: state.hasMore,
-      }),
+      partialize: buildSearchPersistSnapshot,
     }
   )
 )

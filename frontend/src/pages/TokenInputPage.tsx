@@ -2,12 +2,18 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useI18n } from '../i18n/useI18n';
+import { setDocumentTitle } from '../utils/documentTitle';
+import {
+  buildTokenDocumentTitle,
+  getTokenAuthErrorMessage,
+  isTokenSubmitDisabled,
+} from './tokenInputPageModel';
 
 export default function TokenInputPage() {
   const { t } = useI18n();
 
   useEffect(() => {
-    document.title = t('token.documentTitleDefault');
+    setDocumentTitle(buildTokenDocumentTitle(t('token.documentTitleDefault')));
   }, [t]);
 
   const [refreshToken, setRefreshToken] = useState('');
@@ -15,6 +21,10 @@ export default function TokenInputPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { setupAuth } = useAuthStore();
+  const isSubmitDisabled = isTokenSubmitDisabled({
+    isLoading: loading,
+    refreshToken,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +35,7 @@ export default function TokenInputPage() {
       await setupAuth(refreshToken);
       navigate('/history');
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('token.authFailedFallback'));
+      setError(getTokenAuthErrorMessage(err, t('token.authFailedFallback')));
     } finally {
       setLoading(false);
     }
@@ -65,7 +75,7 @@ export default function TokenInputPage() {
 
           <button
             type="submit"
-            disabled={loading || !refreshToken.trim()}
+            disabled={isSubmitDisabled}
             className="w-full h-16 bg-primary text-white py-4 px-10 rounded-xl font-black hover:scale-105 active:scale-95 disabled:opacity-30 disabled:hover:scale-100 transition-all text-xl uppercase tracking-widest"
           >
             {loading ? t('token.submitting') : t('token.submit')}

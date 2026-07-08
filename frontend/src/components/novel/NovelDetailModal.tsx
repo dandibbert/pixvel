@@ -1,5 +1,10 @@
 import { NovelDetail } from '../../types/novel'
 import { useI18n } from '../../i18n/useI18n'
+import {
+  buildAuthorPath,
+  buildSeriesPath,
+  openAppPathInNewTab,
+} from '../../utils/appNavigation'
 import NovelDetailContent from './NovelDetailContent'
 
 interface NovelDetailModalProps {
@@ -42,11 +47,11 @@ export default function NovelDetailModal({ novel, isOpen, onClose }: NovelDetail
             t={t}
             formatNumber={formatNumber}
             onNavigateAuthor={(authorId) => {
-              window.open(`/author/${authorId}`, '_blank', 'noopener,noreferrer')
+              openAppPathInNewTab(buildAuthorPath(authorId))
               onClose()
             }}
             onNavigateSeries={(seriesId) => {
-              window.open(`/series/${seriesId}`, '_blank', 'noopener,noreferrer')
+              openAppPathInNewTab(buildSeriesPath(seriesId))
               onClose()
             }}
             statsMode="reader"
@@ -56,4 +61,3 @@ export default function NovelDetailModal({ novel, isOpen, onClose }: NovelDetail
     </div>
   )
 }
-

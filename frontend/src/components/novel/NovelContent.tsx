@@ -1,31 +1,13 @@
 import { parseNovelText, ParsedElement } from '../../utils/novelTextParser'
+import { openAppPathInNewTab } from '../../utils/appNavigation'
+import {
+  buildJumpPageLabel,
+  resolveNovelContentLinkTarget,
+} from './novelContentModel'
 
 interface NovelContentProps {
   content: string
   onJumpToPage?: (page: number) => void
-}
-
-function extractPixivNovelId(url: string): string | null {
-  try {
-    const urlObj = new URL(url)
-
-    // Validate it's a Pixiv domain
-    if (!urlObj.hostname.endsWith('pixiv.net') && urlObj.hostname !== 'pixiv.net') {
-      return null
-    }
-
-    // Legacy format: pixiv.net/novel/show.php?id=123456
-    if (urlObj.pathname.includes('/novel/show.php')) {
-      const id = urlObj.searchParams.get('id')
-      return id || null
-    }
-
-    // Modern format: pixiv.net/novel/123456 or pixiv.net/en/novel/123456
-    const match = urlObj.pathname.match(/\/novel\/(\d+)/)
-    return match ? match[1] : null
-  } catch {
-    return null
-  }
 }
 
 export default function NovelContent({ content, onJumpToPage }: NovelContentProps) {
@@ -55,16 +37,16 @@ export default function NovelContent({ content, onJumpToPage }: NovelContentProp
 
       case 'link': {
         const linkUrl = element.metadata?.linkUrl || ''
-        const novelId = extractPixivNovelId(linkUrl)
+        const linkTarget = resolveNovelContentLinkTarget(linkUrl)
 
-        if (novelId) {
+        if (linkTarget.type === 'app-novel') {
           return (
             <a
               key={index}
               href={linkUrl}
               onClick={(e) => {
                 e.preventDefault()
-                window.open(`/novel/${novelId}`, '_blank', 'noopener,noreferrer')
+                openAppPathInNewTab(linkTarget.href)
               }}
               className="text-pixiv-blue underline hover:text-blue-600 break-words cursor-pointer"
             >
@@ -76,7 +58,7 @@ export default function NovelContent({ content, onJumpToPage }: NovelContentProp
         return (
           <a
             key={index}
-            href={linkUrl}
+            href={linkTarget.href}
             target="_blank"
             rel="noopener noreferrer"
             className="text-pixiv-blue underline hover:text-blue-600 break-words"
@@ -88,7 +70,7 @@ export default function NovelContent({ content, onJumpToPage }: NovelContentProp
 
       case 'jump':
         if (!onJumpToPage || !element.metadata?.jumpPage) {
-          return <span key={index}>[jump:{element.metadata?.jumpPage}]</span>
+          return <span key={index}>{buildJumpPageLabel(element.metadata?.jumpPage)}</span>
         }
         return (
           <button
@@ -96,7 +78,7 @@ export default function NovelContent({ content, onJumpToPage }: NovelContentProp
             className="text-pixiv-blue underline hover:text-blue-600 cursor-pointer bg-transparent border-none p-0 font-inherit"
             onClick={() => onJumpToPage(element.metadata!.jumpPage!)}
           >
-            [jump:{element.metadata.jumpPage}]
+            {buildJumpPageLabel(element.metadata.jumpPage)}
           </button>
         )
 

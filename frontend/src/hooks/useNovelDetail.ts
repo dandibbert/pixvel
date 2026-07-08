@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useReaderStore } from '../stores/readerStore'
 import { api } from '../utils/api'
+import { logErrorDescriptor } from '../utils/errorLog'
+import { scrollViewportToTop } from '../utils/pageScroll'
+import {
+  buildReadingHistorySaveErrorLog,
+  buildReadingHistoryPositionPayload,
+  buildSeriesRequestPathForNovel,
+} from './useNovelDetailModel'
 
 export interface NovelSeries {
   id: string
@@ -24,7 +31,7 @@ export function useNovelDetail(novelId: string | undefined) {
     if (!novelId) return
 
     // Reset scroll position when loading a new novel
-    window.scrollTo(0, 0)
+    scrollViewportToTop({ behavior: 'auto' })
     setSeries(null)
 
     const fetchData = async () => {
@@ -33,8 +40,8 @@ export function useNovelDetail(novelId: string | undefined) {
       // Get the loaded novel from store
       const loadedNovel = useReaderStore.getState().novel
 
-      // If novel has no series, skip series API call
-      if (!loadedNovel?.series?.id) {
+      const seriesRequestPath = buildSeriesRequestPathForNovel(novelId, loadedNovel)
+      if (!seriesRequestPath) {
         setSeries(null)
         return
       }
@@ -42,11 +49,7 @@ export function useNovelDetail(novelId: string | undefined) {
       try {
         setSeriesLoading(true)
         // Pass series_id and series_title to skip redundant detail API call
-        const params = new URLSearchParams({
-          series_id: loadedNovel.series.id,
-          series_title: loadedNovel.series.title || '',
-        })
-        const seriesData = await api.get<NovelSeries>(`/novels/${novelId}/series?${params}`)
+        const seriesData = await api.get<NovelSeries>(seriesRequestPath)
         setSeries(seriesData)
       } catch (err) {
         setSeries(null)
@@ -64,14 +67,10 @@ export function useNovelDetail(novelId: string | undefined) {
 
     const saveToHistory = async () => {
       try {
-        await api.post('/history/position', {
-          novelId,
-          position: 0,
-          title: novel.title,
-          coverUrl: novel.coverImage || '',
-        })
+        await api.post('/history/position', buildReadingHistoryPositionPayload(novelId, novel))
       } catch (err) {
-        console.error('Failed to save reading history:', err)
+        const errorLog = buildReadingHistorySaveErrorLog(err)
+        logErrorDescriptor(errorLog)
       }
     }
 

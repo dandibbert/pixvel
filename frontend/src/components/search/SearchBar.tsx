@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
 import { useI18n } from '../../i18n/useI18n'
+import { useDebouncedControlledValue } from '../../hooks/useDebouncedControlledValue'
 
 interface SearchBarProps {
   value: string
@@ -21,21 +21,11 @@ export default function SearchBar({
   maxLength,
 }: SearchBarProps) {
   const { t } = useI18n()
-  const [localValue, setLocalValue] = useState(value)
-
-  useEffect(() => {
-    setLocalValue(value)
-  }, [value])
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (localValue !== value) {
-        onChange(localValue)
-      }
-    }, debounceMs)
-
-    return () => clearTimeout(timer)
-  }, [localValue, value, onChange, debounceMs])
+  const [localValue, setLocalValue] = useDebouncedControlledValue({
+    value,
+    onChange,
+    debounceMs,
+  })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()

@@ -1,4 +1,5 @@
 import { useI18n } from '../../i18n/useI18n'
+import { joinClassNames } from '../../utils/classNames'
 
 interface ErrorMessageProps {
   message: string
@@ -10,7 +11,12 @@ export default function ErrorMessage({ message, onRetry, className = '' }: Error
   const { t } = useI18n()
 
   return (
-    <div className={`bg-accent/10 border-l-[12px] border-accent rounded-r-xl p-8 md:p-10 ${className}`}>
+    <div
+      className={joinClassNames(
+        'bg-accent/10 border-l-[12px] border-accent rounded-r-xl p-8 md:p-10',
+        className,
+      )}
+    >
       <div className="flex items-start space-x-6">
         <div className="bg-accent text-white p-3 rounded-lg flex-shrink-0">
           <svg

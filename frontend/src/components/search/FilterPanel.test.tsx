@@ -1,6 +1,11 @@
-import { act } from 'react'
-import { createRoot, Root } from 'react-dom/client'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  clickButtonContainingText,
+  clickElement,
+  getButtonContainingText,
+  getElementBySelector,
+  renderReactElement,
+} from '../../test/domTestUtils'
 import FilterPanel from './FilterPanel'
 
 const translations: Record<string, string> = {
@@ -41,14 +46,10 @@ vi.mock('../../i18n/useI18n', () => ({
 }))
 
 function renderFilterPanel(props: Partial<React.ComponentProps<typeof FilterPanel>> = {}) {
-  const container = document.createElement('div')
-  document.body.appendChild(container)
-
-  const root = createRoot(container)
   const onApply = vi.fn()
 
-  act(() => {
-    root.render(
+  return {
+    ...renderReactElement(
       <FilterPanel
         searchTarget="keyword"
         startDate=""
@@ -81,25 +82,9 @@ function renderFilterPanel(props: Partial<React.ComponentProps<typeof FilterPane
         onApply={onApply}
         {...props}
       />,
-    )
-  })
-
-  return { container, root, onApply }
-}
-
-function getButton(container: HTMLElement, text: string) {
-  const button = Array.from(container.querySelectorAll('button')).find((element) => element.textContent?.includes(text))
-
-  if (!(button instanceof HTMLButtonElement)) {
-    throw new Error(`Button containing text "${text}" was not found`)
+    ),
+    onApply,
   }
-
-  return button
-}
-
-function unmount(root: Root, container: HTMLElement) {
-  act(() => root.unmount())
-  container.remove()
 }
 
 describe('FilterPanel', () => {
@@ -108,44 +93,31 @@ describe('FilterPanel', () => {
   })
 
   it('opens overlay drawer and closes when clicking outside', () => {
-    const { container, root } = renderFilterPanel()
+    const { container, unmount } = renderFilterPanel()
 
-    act(() => {
-      getButton(container, '筛选器').click()
-    })
+    clickButtonContainingText(container, '筛选器')
 
     expect(container.querySelector('[role="dialog"]')?.getAttribute('aria-label')).toBe('筛选器')
     expect(container.textContent).toContain('关键词')
     expect(container.textContent).toContain('不限制')
     expect(container.textContent).toContain('排除 AI 作品')
 
-    const overlay = container.querySelector('[data-testid="filter-overlay"]')
-    if (!(overlay instanceof HTMLElement)) {
-      throw new Error('Filter overlay was not found')
-    }
+    const overlay = getElementBySelector(container, '[data-testid="filter-overlay"]', HTMLElement, 'Filter overlay')
 
-    act(() => {
-      overlay.click()
-    })
+    clickElement(overlay)
 
     expect(container.querySelector('[role="dialog"]')).toBeNull()
 
-    unmount(root, container)
+    unmount()
   })
 
   it('uses a mobile-safe scroll container for the overlay drawer', () => {
-    const { container, root } = renderFilterPanel()
+    const { container, unmount } = renderFilterPanel()
 
-    act(() => {
-      getButton(container, '筛选器').click()
-    })
+    clickButtonContainingText(container, '筛选器')
 
-    const overlay = container.querySelector('[data-testid="filter-overlay"]')
-    const dialog = container.querySelector('[role="dialog"]')
-
-    if (!(overlay instanceof HTMLElement) || !(dialog instanceof HTMLElement)) {
-      throw new Error('Filter overlay dialog was not found')
-    }
+    const overlay = getElementBySelector(container, '[data-testid="filter-overlay"]', HTMLElement, 'Filter overlay')
+    const dialog = getElementBySelector(container, '[role="dialog"]', HTMLElement, 'Filter dialog')
 
     expect(overlay.className).toContain('overflow-y-auto')
     expect(overlay.className).toContain('overscroll-contain')
@@ -154,32 +126,28 @@ describe('FilterPanel', () => {
     expect(dialog.className).toContain('overscroll-contain')
     expect(dialog.className).toContain('touch-pan-y')
     expect(dialog.className).toContain('[-webkit-overflow-scrolling:touch]')
-    expect(dialog.contains(getButton(container, '应用筛选'))).toBe(true)
-    expect(dialog.contains(getButton(container, '重置'))).toBe(true)
+    expect(dialog.contains(getButtonContainingText(container, '应用筛选'))).toBe(true)
+    expect(dialog.contains(getButtonContainingText(container, '重置'))).toBe(true)
 
-    unmount(root, container)
+    unmount()
   })
 
   it('shows validation errors and does not apply invalid ranges', () => {
-    const { container, root, onApply } = renderFilterPanel({
+    const { container, unmount, onApply } = renderFilterPanel({
       startDate: '2026-04-26',
       endDate: '2025-04-26',
       bookmarkNumMin: 5000,
       bookmarkNumMax: 1000,
     })
 
-    act(() => {
-      getButton(container, '筛选器').click()
-    })
+    clickButtonContainingText(container, '筛选器')
 
-    act(() => {
-      getButton(container, '应用筛选').click()
-    })
+    clickButtonContainingText(container, '应用筛选')
 
     expect(container.textContent).toContain('开始日期不能晚于结束日期')
     expect(container.textContent).toContain('收藏下限不能高于收藏上限')
     expect(onApply).not.toHaveBeenCalled()
 
-    unmount(root, container)
+    unmount()
   })
 })

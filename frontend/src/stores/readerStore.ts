@@ -2,18 +2,25 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { NovelDetail, NovelPage } from '../types/novel'
 import { api } from '../utils/api'
-import { splitByNewpage } from '../utils/novelTextParser'
-
-interface CachedNovel {
-  novel: NovelDetail
-  pages: NovelPage[]
-  currentPage: number
-  timestamp: number
-}
-
-interface NovelCache {
-  [novelId: string]: CachedNovel
-}
+import { logErrorDescriptor } from '../utils/errorLog'
+import {
+  buildClearedReaderLoadState,
+  buildFreshReaderLoadState,
+  buildNovelPages,
+  buildReaderClearErrorState,
+  buildReaderPersistSnapshot,
+  buildReaderErrorState,
+  buildReaderLoadingState,
+  type NovelCache,
+  type ReaderPersistSnapshot,
+} from './readerCache'
+import {
+  buildReaderLoadErrorLog,
+  buildTimestampedReaderCacheHitState,
+  buildTimestampedReaderPageChangeState,
+  cacheReaderNovelWithTimestamp,
+} from './readerStoreModel'
+import { READER_ERROR_CODES } from '../pages/readerPageModel'
 
 interface ReaderState {
   novel: NovelDetail | null
@@ -36,30 +43,8 @@ interface ReaderState {
   refreshNovel: () => Promise<void>
 }
 
-const MAX_CACHE_SIZE = 20
-
-// Update cache order (LRU)
-const updateCacheOrder = (cacheOrder: string[], novelId: string): string[] => {
-  const filtered = cacheOrder.filter(id => id !== novelId)
-  return [novelId, ...filtered]
-}
-
-// Evict oldest cache
-const evictOldestCache = (novelCache: NovelCache, cacheOrder: string[]): { novelCache: NovelCache; cacheOrder: string[] } => {
-  if (cacheOrder.length <= MAX_CACHE_SIZE) {
-    return { novelCache, cacheOrder }
-  }
-
-  const oldestId = cacheOrder[cacheOrder.length - 1]
-  const newCache = { ...novelCache }
-  delete newCache[oldestId]
-  const newOrder = cacheOrder.slice(0, -1)
-
-  return { novelCache: newCache, cacheOrder: newOrder }
-}
-
 export const useReaderStore = create<ReaderState>()(
-  persist(
+  persist<ReaderState, [], [], ReaderPersistSnapshot>(
     (set, get) => ({
       novel: null,
       pages: [],
@@ -72,29 +57,19 @@ export const useReaderStore = create<ReaderState>()(
 
       loadNovel: async (novelId, forceRefresh = false) => {
         try {
-          set({ isLoading: true, error: null })
+          set(buildReaderLoadingState())
 
-          // Check cache (unless force refresh)
-          if (!forceRefresh) {
-            const { novelCache, cacheOrder } = get()
-            const cached = novelCache[novelId]
+          const { novelCache, cacheOrder } = get()
+          const cacheHitState = buildTimestampedReaderCacheHitState({
+            novelCache,
+            cacheOrder,
+            novelId,
+            forceRefresh,
+          })
 
-            if (cached) {
-              // Cache hit, use cached data
-              set({
-                novel: cached.novel,
-                pages: cached.pages,
-                currentPage: cached.currentPage,
-                totalPages: cached.pages.length,
-                isLoading: false,
-                cacheOrder: updateCacheOrder(cacheOrder, novelId),
-                novelCache: {
-                  ...novelCache,
-                  [novelId]: { ...cached, timestamp: Date.now() }
-                }
-              })
-              return
-            }
+          if (cacheHitState) {
+            set(cacheHitState)
+            return
           }
 
           // Cache miss or force refresh, fetch from API
@@ -104,74 +79,44 @@ export const useReaderStore = create<ReaderState>()(
           ])
 
           if (!contentResponse.content) {
-            throw new Error('ERR_READER_CONTENT_EMPTY')
+            throw new Error(READER_ERROR_CODES.contentEmpty)
           }
 
-          const pageTexts = splitByNewpage(contentResponse.content)
-          const pages: NovelPage[] = pageTexts.map((text, index) => ({
-            page: index + 1,
-            content: text,
-          }))
+          const pages = buildNovelPages(contentResponse.content)
 
           // Update cache
-          const { novelCache, cacheOrder } = get()
-          const newCacheOrder = updateCacheOrder(cacheOrder, novelId)
-          const newCachedNovel: CachedNovel = {
+          const { novelCache: latestNovelCache, cacheOrder: latestCacheOrder } = get()
+          const updatedCache = cacheReaderNovelWithTimestamp({
+            novelCache: latestNovelCache,
+            cacheOrder: latestCacheOrder,
+            novelId,
             novel: novelDetail,
             pages,
-            currentPage: 1,
-            timestamp: Date.now()
-          }
-
-          let updatedCache = {
-            ...novelCache,
-            [novelId]: newCachedNovel
-          }
-          let updatedOrder = newCacheOrder
-
-          // Evict old cache if needed
-          if (updatedOrder.length > MAX_CACHE_SIZE) {
-            const evicted = evictOldestCache(updatedCache, updatedOrder)
-            updatedCache = evicted.novelCache
-            updatedOrder = evicted.cacheOrder
-          }
-
-          set({
-            novel: novelDetail,
-            pages,
-            totalPages: pages.length,
-            currentPage: 1,
-            isLoading: false,
-            novelCache: updatedCache,
-            cacheOrder: updatedOrder
           })
+
+          set(buildFreshReaderLoadState({
+            novel: novelDetail,
+            pages,
+            updatedCache,
+          }))
         } catch (error) {
-          console.error('Load novel error:', error)
-          set({
-            error: error instanceof Error ? error.message : 'ERR_READER_LOAD_FAILED',
-            isLoading: false,
-          })
+          const errorLog = buildReaderLoadErrorLog(error)
+          logErrorDescriptor(errorLog)
+          set(buildReaderErrorState(error))
         }
       },
 
       setPage: (page) => {
-        const { totalPages, novel } = get()
-        if (page >= 1 && page <= totalPages) {
-          set({ currentPage: page })
+        const { totalPages, novel, novelCache } = get()
+        const pageChange = buildTimestampedReaderPageChangeState({
+          page,
+          totalPages,
+          novelId: novel?.id,
+          novelCache,
+        })
 
-          // Update reading progress in cache
-          if (novel) {
-            const { novelCache } = get()
-            const cached = novelCache[novel.id]
-            if (cached) {
-              set({
-                novelCache: {
-                  ...novelCache,
-                  [novel.id]: { ...cached, currentPage: page, timestamp: Date.now() }
-                }
-              })
-            }
-          }
+        if (pageChange) {
+          set(pageChange)
         }
       },
 
@@ -189,15 +134,9 @@ export const useReaderStore = create<ReaderState>()(
         }
       },
 
-      clearNovel: () =>
-        set({
-          novel: null,
-          pages: [],
-          currentPage: 1,
-          totalPages: 0,
-        }),
+      clearNovel: () => set(buildClearedReaderLoadState()),
 
-      clearError: () => set({ error: null }),
+      clearError: () => set(buildReaderClearErrorState()),
 
       refreshNovel: async () => {
         const { novel } = get()
@@ -208,10 +147,7 @@ export const useReaderStore = create<ReaderState>()(
     }),
     {
       name: 'reader-cache-storage',
-      partialize: (state) => ({
-        novelCache: state.novelCache,
-        cacheOrder: state.cacheOrder,
-      }),
+      partialize: buildReaderPersistSnapshot,
     }
   )
 )

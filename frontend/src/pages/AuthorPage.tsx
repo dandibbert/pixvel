@@ -1,10 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import NovelGrid from '../components/novel/NovelGrid'
 import NovelPreviewModal from '../components/novel/NovelPreviewModal'
 import { Novel } from '../types/novel'
 import { api } from '../utils/api'
+import { setDocumentTitle } from '../utils/documentTitle'
 import { useI18n } from '../i18n/useI18n'
+import { usePagedNovelResource, type PagedNovelResponse } from '../hooks/usePagedNovelResource'
+import { useNovelPreview } from '../hooks/useNovelPreview'
+import PagedNovelCollectionPage from './PagedNovelCollectionPage'
+import {
+  buildPagedCollectionDocumentTitle,
+  buildPagedCollectionLoadErrorMessage,
+  buildPagedCollectionResourceResponse,
+  buildPagedCollectionSubtitle,
+} from './pagedNovelCollectionModel'
 
 interface AuthorResponse {
   author: {
@@ -21,131 +30,79 @@ interface AuthorResponse {
 export default function AuthorPage() {
   const { t, formatNumber } = useI18n()
   const { id } = useParams()
-  const [author, setAuthor] = useState<AuthorResponse['author'] | null>(null)
-  const [novels, setNovels] = useState<Novel[]>([])
-  const [page, setPage] = useState(1)
-  const [nextPage, setNextPage] = useState<number | null>(null)
-  const [hasMore, setHasMore] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [selectedNovel, setSelectedNovel] = useState<Novel | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const novelPreview = useNovelPreview<Novel>()
+
+  const fetchAuthorPage = useCallback(async (page: number): Promise<PagedNovelResponse<AuthorResponse['author']>> => {
+    if (!id) throw new Error(t('author.loadErrorFallback'))
+
+    const response = await api.get<AuthorResponse>(`/novels/user/${id}`, {
+      page,
+    })
+
+    return buildPagedCollectionResourceResponse({
+      resource: response.author,
+      novels: response.novels,
+      page: response.page,
+      nextPage: response.nextPage,
+      hasMore: response.hasMore,
+    })
+  }, [id, t])
+
+  const getAuthorLoadErrorMessage = useCallback((error: unknown) => {
+    return buildPagedCollectionLoadErrorMessage(error, t('author.loadErrorFallback'))
+  }, [t])
+
+  const {
+    resource: author,
+    novels,
+    hasMore,
+    isLoading,
+    error,
+    loadMore,
+  } = usePagedNovelResource({
+    resourceId: id,
+    fetchPage: fetchAuthorPage,
+    getErrorMessage: getAuthorLoadErrorMessage,
+  })
 
   useEffect(() => {
-    document.title = author?.name ? `${author.name}${t('author.documentTitleSuffix')}` : t('author.documentTitleDefault')
+    setDocumentTitle(buildPagedCollectionDocumentTitle({
+      resourceTitle: author?.name,
+      titleSuffix: t('author.documentTitleSuffix'),
+      defaultTitle: t('author.documentTitleDefault'),
+    }))
   }, [author?.name, t])
 
-  useEffect(() => {
-    if (!id) return
-    setAuthor(null)
-    setNovels([])
-    setPage(1)
-    setNextPage(null)
-    setHasMore(false)
-    setError(null)
-  }, [id])
-
-  useEffect(() => {
-    if (!id) return
-
-    const fetchAuthorNovels = async () => {
-      try {
-        setIsLoading(true)
-        setError(null)
-        const response = await api.get<AuthorResponse>(`/novels/user/${id}`, {
-          page,
-        })
-
-        setAuthor(response.author)
-        setNovels((prev) => (page === 1 ? response.novels : [...prev, ...response.novels]))
-        setHasMore(response.hasMore)
-        setNextPage(response.nextPage ?? null)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : t('author.loadErrorFallback'))
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchAuthorNovels()
-  }, [id, page])
-
-  const handleNovelClick = (novel: Novel) => {
-    setSelectedNovel(novel)
-    setIsModalOpen(true)
-  }
-
   const handleLoadMore = () => {
-    if (isLoading || !hasMore) return
-    setPage(nextPage ?? page + 1)
+    loadMore()
   }
+
+  const subtitle = buildPagedCollectionSubtitle({
+    count: novels.length,
+    loadedTemplate: t('author.subtitleLoaded'),
+    defaultSubtitle: t('author.subtitleDefault'),
+    formatNumber,
+  })
 
   return (
-    <div className="min-h-screen">
-      <div className="bg-primary pt-12 pb-16 md:pt-20 md:pb-32 px-4 mb-[-2.5rem] md:mb-[-4rem]">
-        <div className="max-w-7xl mx-auto">
-          <p className="text-white/60 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2">{t('author.label')}</p>
-          <h1 className="text-2xl md:text-5xl font-bold text-white mb-2 tracking-tight">
-            {author?.name || t('author.loadingName')}
-          </h1>
-          <p className="text-white/80 text-sm md:text-lg font-medium max-w-2xl">
-            {novels.length > 0
-              ? t('author.subtitleLoaded').replace('{count}', formatNumber(novels.length))
-              : t('author.subtitleDefault')}
-          </p>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 pb-20">
-        <div className="bg-white rounded-2xl p-4 md:p-8 border border-border/50 shadow-xl shadow-black/5">
-          {error && (
-            <div className="mb-6 p-4 md:p-6 bg-accent/10 border-l-4 border-accent rounded-r-lg">
-              <p className="text-accent font-bold text-base md:text-lg">{error}</p>
-            </div>
-          )}
-
-          {isLoading && novels.length === 0 ? (
-            <div className="text-center py-16 md:py-20">
-              <div className="inline-block animate-bounce h-12 w-12 md:h-16 md:w-16 bg-primary rounded-lg flex items-center justify-center">
-                <div className="w-6 h-6 md:w-8 md:h-8 rounded-full border-4 border-white border-t-transparent animate-spin"></div>
-              </div>
-              <p className="mt-4 md:mt-6 text-lg md:text-2xl font-bold text-primary uppercase tracking-widest">{t('author.loading')}</p>
-            </div>
-          ) : novels.length > 0 ? (
-            <>
-              <NovelGrid novels={novels} onNovelClick={handleNovelClick} />
-              {hasMore && (
-                <div className="mt-8 md:mt-12 flex justify-center">
-                  <button
-                    onClick={handleLoadMore}
-                    disabled={isLoading}
-                    className="h-12 md:h-14 px-8 md:px-10 bg-primary text-white font-bold rounded-lg hover:scale-105 active:scale-95 transition-all disabled:opacity-40 disabled:hover:scale-100"
-                  >
-                    {isLoading ? t('author.loading') : t('author.loadMore')}
-                  </button>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="text-center py-16 md:py-24 bg-muted/50 rounded-xl">
-              <div className="flex justify-center mb-6 md:mb-8">
-                <div className="p-6 md:p-8 bg-muted rounded-full">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 md:h-20 md:w-20 text-foreground/10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                </div>
-              </div>
-              <p className="text-xl md:text-2xl font-bold text-foreground/30 uppercase">{t('author.empty')}</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <NovelPreviewModal
-        novel={selectedNovel}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+    <>
+      <PagedNovelCollectionPage
+        label={t('author.label')}
+        title={author?.name || t('author.loadingName')}
+        subtitle={subtitle}
+        error={error}
+        novels={novels}
+        isLoading={isLoading}
+        hasMore={hasMore}
+        loadingLabel={t('author.loading')}
+        loadMoreLabel={t('author.loadMore')}
+        emptyLabel={t('author.empty')}
+        onNovelClick={novelPreview.openPreview}
+        onLoadMore={handleLoadMore}
       />
-    </div>
+      <NovelPreviewModal
+        {...novelPreview.previewModalProps}
+      />
+    </>
   )
 }

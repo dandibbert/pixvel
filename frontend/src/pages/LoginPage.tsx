@@ -1,11 +1,11 @@
 import { useI18n } from '../i18n/useI18n'
+import { buildPixivAuthPath, navigateCurrentWindowToPath } from '../utils/appNavigation'
 
 export default function LoginPage() {
   const { t } = useI18n()
 
   const handleLogin = () => {
-    // OAuth login will be implemented later
-    window.location.href = '/api/auth/pixiv'
+    navigateCurrentWindowToPath(buildPixivAuthPath())
   }
 
   return (

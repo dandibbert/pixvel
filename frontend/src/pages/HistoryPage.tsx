@@ -2,6 +2,18 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '../i18n/useI18n'
 import { api } from '../utils/api'
+import { buildNovelPath } from '../utils/appNavigation'
+import { setDocumentTitle } from '../utils/documentTitle'
+import HistoryEntryCard from './HistoryEntryCard'
+import {
+  buildHistoryDocumentTitle,
+  buildHistoryEntryDateFormatter,
+  buildHistoryEntryCardViewModel,
+  buildHistoryListRequestPath,
+  buildHistoryPageViewModel,
+  buildHistorySubtitle,
+  getHistoryLoadErrorMessage,
+} from './historyPageModel'
 
 interface HistoryEntry {
   novelId: string
@@ -19,7 +31,7 @@ export default function HistoryPage() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    document.title = t('history.documentTitleDefault')
+    setDocumentTitle(buildHistoryDocumentTitle(t('history.documentTitleDefault')))
   }, [t])
 
   useEffect(() => {
@@ -30,41 +42,38 @@ export default function HistoryPage() {
     try {
       setIsLoading(true)
       setError(null)
-      const response = await api.get<{ history: HistoryEntry[] }>('/history/novels?limit=50')
+      const response = await api.get<{ history: HistoryEntry[] }>(buildHistoryListRequestPath(50))
       setHistory(response.history)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('history.loadErrorFallback'))
+      setError(getHistoryLoadErrorMessage(err, t('history.loadErrorFallback')))
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleNovelClick = (novelId: string) => {
-    navigate(`/novel/${novelId}`)
+    navigate(buildNovelPath(novelId))
   }
 
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp)
-    const now = new Date()
-    const diff = now.getTime() - date.getTime()
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const formatDate = buildHistoryEntryDateFormatter({
+    locale,
+    t,
+    formatNumber,
+  })
 
-    if (days === 0) {
-      return t('history.today')
-    }
-    if (days === 1) {
-      return t('history.yesterday')
-    }
-    if (days < 7) {
-      return t('history.daysAgo').replace('{count}', formatNumber(days))
-    }
+  const viewModel = buildHistoryPageViewModel({
+    isLoading,
+    hasError: Boolean(error),
+    historyCount: history.length,
+    formatSubtitle: (count) =>
+      buildHistorySubtitle({
+        template: t('history.subtitle'),
+        count,
+        formatNumber,
+      }),
+  })
 
-    return date.toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'zh-CN')
-  }
-
-  const subtitle = t('history.subtitle').replace('{count}', formatNumber(history.length))
-
-  if (isLoading) {
+  if (viewModel.state === 'loading') {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -75,7 +84,7 @@ export default function HistoryPage() {
     )
   }
 
-  if (error) {
+  if (viewModel.state === 'error') {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="text-center">
@@ -99,14 +108,14 @@ export default function HistoryPage() {
             {t('history.title')}
           </h1>
           <p className="text-white/80 text-sm md:text-xl font-medium max-w-2xl">
-            {subtitle}
+            {viewModel.subtitle}
           </p>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 pb-20">
         <div className="bg-white rounded-2xl p-4 md:p-8 border border-border/50 shadow-xl shadow-black/5">
-          {history.length === 0 ? (
+          {viewModel.state === 'empty' ? (
             <div className="text-center py-16 md:py-24 bg-muted/50 rounded-xl">
               <div className="flex justify-center mb-6 md:mb-8">
                 <div className="p-6 md:p-8 bg-muted rounded-full">
@@ -119,25 +128,22 @@ export default function HistoryPage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
-              {history.map((entry) => (
-                <div
-                  key={entry.novelId}
-                  onClick={() => handleNovelClick(entry.novelId)}
-                  className="bg-white border border-border/50 rounded-xl overflow-hidden transition-all duration-200 cursor-pointer group flex flex-col h-full hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 active:scale-[0.98]"
-                >
-                  <div className="p-3 md:p-4 flex flex-col gap-3 flex-1">
-                    <h3 className="text-sm md:text-lg font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug tracking-tight">
-                      {entry.title}
-                    </h3>
-                    <div className="flex items-center justify-between mt-auto pt-3 border-t border-muted">
-                      <span className="text-[10px] md:text-xs font-semibold text-foreground/40 uppercase tracking-wider">{formatDate(entry.lastReadAt)}</span>
-                      {entry.position > 0 && (
-                        <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-[9px] md:text-[10px] font-bold uppercase tracking-wider">{t('history.continue')}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+              {history.map((entry) => {
+                const entryViewModel = buildHistoryEntryCardViewModel({
+                  position: entry.position,
+                })
+
+                return (
+                  <HistoryEntryCard
+                    key={entry.novelId}
+                    title={entry.title}
+                    formattedDate={formatDate(entry.lastReadAt)}
+                    showContinue={entryViewModel.showContinue}
+                    continueLabel={t('history.continue')}
+                    onClick={() => handleNovelClick(entry.novelId)}
+                  />
+                )
+              })}
             </div>
           )}
         </div>

@@ -1,6 +1,14 @@
 import { useEffect, useRef } from 'react'
 import { useSearchParams, useParams } from 'react-router-dom'
 import { useReaderStore } from '../stores/readerStore'
+import { scrollViewportToTopAfterNextFrame } from '../utils/pageScroll'
+import {
+  buildReaderPageSearchParams,
+  resolveNextReaderPage,
+  resolvePreviousReaderPage,
+  resolveReaderPageFromSearchParams,
+  resolveRequestedReaderPage,
+} from './novelPaginationModel'
 
 export function useNovelPagination() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -20,54 +28,41 @@ export function useNovelPagination() {
       return
     }
 
-    const pageParam = searchParams.get('page')
-    if (pageParam) {
-      const page = parseInt(pageParam, 10)
-      if (!isNaN(page) && page >= 1 && page <= totalPages) {
-        setPage(page)
-      }
+    const page = resolveReaderPageFromSearchParams(searchParams, totalPages)
+    if (page !== null) {
+      setPage(page)
     }
   }, [searchParams, totalPages, setPage])
 
   // Reset scroll position after page state is applied to avoid race with URL updates/re-render.
   useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    const scrollToTop = () => {
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-    }
-
-    scrollToTop()
-    const rafId = window.requestAnimationFrame(scrollToTop)
-
-    return () => {
-      window.cancelAnimationFrame(rafId)
-    }
+    return scrollViewportToTopAfterNextFrame({ behavior: 'auto' })
   }, [currentPage])
 
+  const applyPageNavigation = (page: number) => {
+    isUpdatingRef.current = true
+    setPage(page)
+    setSearchParams(buildReaderPageSearchParams(page), { replace: true })
+  }
+
   const goToPage = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      isUpdatingRef.current = true
-      setPage(page)
-      setSearchParams({ page: page.toString() }, { replace: true })
+    const nextPage = resolveRequestedReaderPage(page, totalPages)
+    if (nextPage !== null) {
+      applyPageNavigation(nextPage)
     }
   }
 
   const goToNextPage = () => {
-    if (currentPage < totalPages) {
-      const newPage = currentPage + 1
-      isUpdatingRef.current = true
-      setPage(newPage)
-      setSearchParams({ page: newPage.toString() }, { replace: true })
+    const nextPage = resolveNextReaderPage(currentPage, totalPages)
+    if (nextPage !== null) {
+      applyPageNavigation(nextPage)
     }
   }
 
   const goToPrevPage = () => {
-    if (currentPage > 1) {
-      const newPage = currentPage - 1
-      isUpdatingRef.current = true
-      setPage(newPage)
-      setSearchParams({ page: newPage.toString() }, { replace: true })
+    const nextPage = resolvePreviousReaderPage(currentPage)
+    if (nextPage !== null) {
+      applyPageNavigation(nextPage)
     }
   }
 

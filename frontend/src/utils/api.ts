@@ -1,4 +1,15 @@
-const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || '/api'
+import { readStorageItem } from './safeStorage'
+
+type ImportMetaWithApiEnv = ImportMeta & {
+  readonly env?: {
+    readonly VITE_API_BASE_URL?: string
+  }
+}
+
+const API_BASE_URL = (import.meta as ImportMetaWithApiEnv).env?.VITE_API_BASE_URL || '/api'
+
+export type QueryParamValue = string | number | boolean | null | undefined
+export type QueryParams = Record<string, QueryParamValue>
 
 export class ApiError extends Error {
   constructor(
@@ -12,7 +23,64 @@ export class ApiError extends Error {
 }
 
 interface RequestOptions extends RequestInit {
-  params?: Record<string, string | number | boolean | undefined>
+  params?: QueryParams
+}
+
+export function buildRequestUrl(
+  baseUrl: string,
+  endpoint: string,
+  params?: QueryParams,
+): string {
+  let url = `${baseUrl}${endpoint}`
+  const queryString = buildQueryString(params)
+
+  if (queryString) {
+    url += `?${queryString}`
+  }
+
+  return url
+}
+
+export function buildQueryString(params?: QueryParams): string {
+  if (!params) return ''
+
+  const searchParams = new URLSearchParams()
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      searchParams.append(key, String(value))
+    }
+  })
+
+  return searchParams.toString()
+}
+
+export function buildRequestHeaders(headers: HeadersInit | undefined, token: string | null): Headers {
+  const requestHeaders = new Headers(headers)
+  requestHeaders.set('Content-Type', 'application/json')
+
+  if (token) {
+    requestHeaders.set('Authorization', `Bearer ${token}`)
+  }
+
+  return requestHeaders
+}
+
+export function serializeJsonBody(data: unknown): string | undefined {
+  return data === undefined ? undefined : JSON.stringify(data)
+}
+
+export function readAccessToken(storage: Storage): string | null {
+  return readStorageItem(storage, 'accessToken') || null
+}
+
+export function readBrowserAccessToken(
+  storage: Storage | undefined = typeof localStorage === 'undefined' ? undefined : localStorage,
+): string | null {
+  if (!storage) {
+    return null
+  }
+
+  return readAccessToken(storage)
 }
 
 class ApiClient {
@@ -23,7 +91,7 @@ class ApiClient {
   }
 
   private getAuthToken(): string | null {
-    return localStorage.getItem('accessToken')
+    return readBrowserAccessToken()
   }
 
   private async request<T>(
@@ -32,30 +100,9 @@ class ApiClient {
   ): Promise<T> {
     const { params, headers, ...fetchOptions } = options
 
-    let url = `${this.baseUrl}${endpoint}`
-
-    if (params) {
-      const searchParams = new URLSearchParams()
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          searchParams.append(key, String(value))
-        }
-      })
-      const queryString = searchParams.toString()
-      if (queryString) {
-        url += `?${queryString}`
-      }
-    }
-
+    const url = buildRequestUrl(this.baseUrl, endpoint, params)
     const token = this.getAuthToken()
-    const requestHeaders: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(headers as Record<string, string>),
-    }
-
-    if (token) {
-      requestHeaders['Authorization'] = `Bearer ${token}`
-    }
+    const requestHeaders = buildRequestHeaders(headers, token)
 
     const response = await fetch(url, {
       ...fetchOptions,
@@ -78,21 +125,21 @@ class ApiClient {
     return response.json()
   }
 
-  async get<T>(endpoint: string, params?: Record<string, any>): Promise<T> {
+  async get<T>(endpoint: string, params?: QueryParams): Promise<T> {
     return this.request<T>(endpoint, { method: 'GET', params })
   }
 
-  async post<T>(endpoint: string, data?: any): Promise<T> {
+  async post<T>(endpoint: string, data?: unknown): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
+      body: serializeJsonBody(data),
     })
   }
 
-  async put<T>(endpoint: string, data?: any): Promise<T> {
+  async put<T>(endpoint: string, data?: unknown): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
+      body: serializeJsonBody(data),
     })
   }
 

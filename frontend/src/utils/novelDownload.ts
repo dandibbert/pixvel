@@ -1,4 +1,5 @@
 import type { Novel, NovelPage } from '../types/novel'
+import { compactTrimmedStrings } from './stringList'
 
 const ILLEGAL_FILENAME_CHARACTERS = /[\\/:*?"<>|]/g
 const EMPTY_NOVEL_DOWNLOAD_ERROR = 'ERR_EMPTY_NOVEL_DOWNLOAD'
@@ -12,11 +13,11 @@ export function buildNovelTxtContent(pages: NovelPage[]): string {
 }
 
 export function buildNovelTxtFilename(novel: Novel): string {
-  const segments = [
+  const segments = compactTrimmedStrings([
     sanitizeFilenameSegment(novel.author.name),
     sanitizeFilenameSegment(novel.title),
     sanitizeFilenameSegment(novel.series?.title),
-  ].filter((segment) => segment.length > 0)
+  ])
 
   return `${segments.join('-')}.txt`
 }

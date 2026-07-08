@@ -1,4 +1,5 @@
 import { ReactNode, useEffect } from 'react'
+import { joinClassNames } from '../../utils/classNames'
 
 interface ModalProps {
   isOpen: boolean
@@ -43,7 +44,11 @@ export default function Modal({
           onClick={onClose}
         />
         <div
-          className={`relative bg-white rounded-t-xl md:rounded-xl border-t-4 md:border-4 border-primary ${sizeClasses[size]} w-full max-h-[90vh] overflow-y-auto`}
+          className={joinClassNames(
+            'relative bg-white rounded-t-xl md:rounded-xl border-t-4 md:border-4 border-primary',
+            sizeClasses[size],
+            'w-full max-h-[90vh] overflow-y-auto',
+          )}
         >
           {title && (
             <div className="flex items-center justify-between p-6 md:p-8 border-b-2 border-muted">

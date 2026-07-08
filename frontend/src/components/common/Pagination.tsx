@@ -1,12 +1,7 @@
-interface PaginationProps {
-  currentPage: number
-  totalPages: number
-  onPageChange: (page: number) => void
-  showFirstLast?: boolean
-}
-
 import { useState } from 'react'
 import { useI18n } from '../../i18n/useI18n'
+import { parseBoundedPageInput } from '../../utils/pageInput'
+import { buildVisiblePageItems } from './paginationModel'
 
 interface PaginationProps {
   currentPage: number
@@ -22,43 +17,10 @@ export default function Pagination({
   const { t } = useI18n()
   const [jumpValue, setJumpValue] = useState('')
 
-  const getPageNumbers = () => {
-    const pages: (number | string)[] = []
-    const maxVisible = 5 // Reduced for better mobile fit
-
-    if (totalPages <= maxVisible) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i)
-      }
-    } else {
-      if (currentPage <= 3) {
-        for (let i = 1; i <= 4; i++) {
-          pages.push(i)
-        }
-        pages.push('...')
-        pages.push(totalPages)
-      } else if (currentPage >= totalPages - 2) {
-        pages.push(1)
-        pages.push('...')
-        for (let i = totalPages - 3; i <= totalPages; i++) {
-          pages.push(i)
-        }
-      } else {
-        pages.push(1)
-        pages.push('...')
-        pages.push(currentPage)
-        pages.push('...')
-        pages.push(totalPages)
-      }
-    }
-
-    return pages
-  }
-
   const handleJump = (e: React.FormEvent) => {
     e.preventDefault()
-    const page = parseInt(jumpValue, 10)
-    if (!isNaN(page) && page >= 1 && page <= totalPages) {
+    const page = parseBoundedPageInput(jumpValue, totalPages)
+    if (page !== null) {
       onPageChange(page)
       setJumpValue('')
     }
@@ -80,7 +42,7 @@ export default function Pagination({
         </button>
 
         <div className="flex items-center gap-1 md:gap-1.5 overflow-x-auto scrollbar-none flex-1 justify-center">
-          {getPageNumbers().map((page, index) =>
+          {buildVisiblePageItems({ currentPage, totalPages }).map((page, index) =>
             typeof page === 'number' ? (
               <button
                 key={index}

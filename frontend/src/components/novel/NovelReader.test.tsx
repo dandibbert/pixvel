@@ -1,17 +1,18 @@
-import { act } from 'react'
-import { createRoot, Root } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { clickButtonByLabel, getButtonByLabel, renderReactElement } from '../../test/domTestUtils'
+import { enableReactActEnvironment } from '../../test/reactActEnvironment'
 import NovelReader from './NovelReader'
 import type { NovelDetail, NovelPage } from '../../types/novel'
 
-;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
+enableReactActEnvironment()
 
 const mockDownloadNovelTxt = vi.fn()
 const mockRefreshNovel = vi.fn()
 const mockGoToPage = vi.fn()
 const mockGoToNextPage = vi.fn()
 const mockGoToPrevPage = vi.fn()
+const mockLogErrorDescriptor = vi.fn()
 
 const novel: NovelDetail = {
   id: 'novel-1',
@@ -56,6 +57,10 @@ let mockPages = pages
 
 vi.mock('../../utils/novelDownload', () => ({
   downloadNovelTxt: (...args: unknown[]) => mockDownloadNovelTxt(...args),
+}))
+
+vi.mock('../../utils/errorLog', () => ({
+  logErrorDescriptor: (...args: unknown[]) => mockLogErrorDescriptor(...args),
 }))
 
 vi.mock('../../stores/readerStore', () => ({
@@ -113,37 +118,9 @@ vi.mock('./NovelDetailModal', () => ({
 }))
 
 function renderNovelReader() {
-  const container = document.createElement('div')
-  document.body.appendChild(container)
-
-  const root = createRoot(container)
-
-  act(() => {
-    root.render(
-      <MemoryRouter>
-        <NovelReader series={null} />
-      </MemoryRouter>
-    )
+  return renderReactElement(<NovelReader series={null} />, {
+    wrapper: (children) => <MemoryRouter>{children}</MemoryRouter>,
   })
-
-  return { container, root }
-}
-
-function getDownloadButton(container: HTMLElement): HTMLButtonElement {
-  const button = container.querySelector('button[aria-label="Download TXT"]')
-
-  if (!(button instanceof HTMLButtonElement)) {
-    throw new Error('Download button was not found')
-  }
-
-  return button
-}
-
-function unmount(root: Root, container: HTMLElement) {
-  act(() => {
-    root.unmount()
-  })
-  container.remove()
 }
 
 describe('NovelReader', () => {
@@ -154,73 +131,65 @@ describe('NovelReader', () => {
     mockGoToPage.mockReset()
     mockGoToNextPage.mockReset()
     mockGoToPrevPage.mockReset()
+    mockLogErrorDescriptor.mockReset()
     document.body.innerHTML = ''
   })
 
   it('clicking the download button calls downloadNovelTxt with the loaded novel and parsed pages', () => {
-    const { container, root } = renderNovelReader()
+    const { container, unmount } = renderNovelReader()
 
-    act(() => {
-      getDownloadButton(container).click()
-    })
+    clickButtonByLabel(container, 'Download TXT')
 
     expect(mockDownloadNovelTxt).toHaveBeenCalledWith(novel, pages)
 
-    unmount(root, container)
+    unmount()
   })
 
   it('disables the download button when parsed pages are empty', () => {
     mockPages = []
 
-    const { container, root } = renderNovelReader()
+    const { container, unmount } = renderNovelReader()
 
-    expect(getDownloadButton(container).disabled).toBe(true)
+    expect(getButtonByLabel(container, 'Download TXT').disabled).toBe(true)
 
-    unmount(root, container)
+    unmount()
   })
 
-  it('shows the lightweight failure message when downloadNovelTxt throws', () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+  it('logs through the shared error logger and shows the lightweight failure message when downloadNovelTxt throws', () => {
     mockDownloadNovelTxt.mockImplementation(() => {
       throw new Error('download failed')
     })
 
-    const { container, root } = renderNovelReader()
+    const { container, unmount } = renderNovelReader()
 
-    act(() => {
-      getDownloadButton(container).click()
-    })
+    clickButtonByLabel(container, 'Download TXT')
 
     expect(container.textContent).toContain('Download failed')
-    expect(consoleError).toHaveBeenCalledWith('Download novel error:', expect.any(Error))
+    expect(mockLogErrorDescriptor).toHaveBeenCalledWith({
+      label: 'Download novel error:',
+      value: expect.any(Error),
+    })
 
-    consoleError.mockRestore()
-    unmount(root, container)
+    unmount()
   })
 
   it('clears the failure message after a later successful download', () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     mockDownloadNovelTxt
       .mockImplementationOnce(() => {
         throw new Error('download failed')
       })
       .mockImplementationOnce(() => undefined)
 
-    const { container, root } = renderNovelReader()
+    const { container, unmount } = renderNovelReader()
 
-    act(() => {
-      getDownloadButton(container).click()
-    })
+    clickButtonByLabel(container, 'Download TXT')
 
     expect(container.textContent).toContain('Download failed')
 
-    act(() => {
-      getDownloadButton(container).click()
-    })
+    clickButtonByLabel(container, 'Download TXT')
 
     expect(container.textContent).not.toContain('Download failed')
 
-    consoleError.mockRestore()
-    unmount(root, container)
+    unmount()
   })
 })

@@ -1,8 +1,15 @@
 import { act } from 'react'
-import { createRoot, Root } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SearchKeywordRulesProvider } from '../contexts/SearchKeywordRulesContext'
+import {
+  changeInputValue,
+  clickButtonContainingText,
+  getButtonContainingText,
+  getElementBySelector,
+  getElementsBySelector,
+  renderReactElement,
+} from '../test/domTestUtils'
 import { Novel } from '../types/search'
 
 vi.mock('../utils/api', () => ({
@@ -69,37 +76,13 @@ function resetSearchStore() {
 }
 
 function renderSearchPage(path = '/search') {
-  const container = document.createElement('div')
-  document.body.appendChild(container)
-
-  const root = createRoot(container)
-
-  act(() => {
-    root.render(
-      <MemoryRouter initialEntries={[path]}>
-        <SearchKeywordRulesProvider>
-          <SearchPage />
-        </SearchKeywordRulesProvider>
-      </MemoryRouter>,
-    )
-  })
-
-  return { container, root }
-}
-
-function unmount(root: Root, container: HTMLElement) {
-  act(() => root.unmount())
-  container.remove()
-}
-
-function getButton(container: HTMLElement, text: string) {
-  const button = Array.from(container.querySelectorAll('button')).find((element) => element.textContent?.includes(text))
-
-  if (!(button instanceof HTMLButtonElement)) {
-    throw new Error(`Button containing text "${text}" was not found`)
-  }
-
-  return button
+  return renderReactElement(
+    <MemoryRouter initialEntries={[path]}>
+      <SearchKeywordRulesProvider>
+        <SearchPage />
+      </SearchKeywordRulesProvider>
+    </MemoryRouter>,
+  )
 }
 
 describe('SearchPage', () => {
@@ -131,16 +114,16 @@ describe('SearchPage', () => {
       hasMore: true,
     })
 
-    const { container, root } = renderSearchPage('/search?q=五悠&page=1&sort=date_desc&target=keyword')
+    const { container, unmount } = renderSearchPage('/search?q=五悠&page=1&sort=date_desc&target=keyword')
 
     expect(container.textContent).toContain('/ 2')
     expect(container.textContent).not.toContain('/ 3')
 
-    unmount(root, container)
+    unmount()
   })
 
   it('rejects direct URL search terms over the backend length limit before searching', async () => {
-    const rendered: { root: Root; container: HTMLElement }[] = []
+    const rendered: ReturnType<typeof renderSearchPage>[] = []
     const longQuery = '五'.repeat(101)
 
     await act(async () => {
@@ -152,12 +135,12 @@ describe('SearchPage', () => {
     expect(useSearchStore.getState().searchHistory).toHaveLength(0)
 
     if (rendered[0]) {
-      unmount(rendered[0].root, rendered[0].container)
+      rendered[0].unmount()
     }
   })
 
   it('normalizes invalid URL search target before searching', async () => {
-    const rendered: { root: Root; container: HTMLElement }[] = []
+    const rendered: ReturnType<typeof renderSearchPage>[] = []
 
     await act(async () => {
       rendered.push(renderSearchPage('/search?q=五悠&page=1&sort=date_desc&target=bad_target'))
@@ -179,7 +162,7 @@ describe('SearchPage', () => {
     })
 
     if (rendered[0]) {
-      unmount(rendered[0].root, rendered[0].container)
+      rendered[0].unmount()
     }
   })
 
@@ -211,29 +194,23 @@ describe('SearchPage', () => {
       hasMore: false,
     })
 
-    const { container, root } = renderSearchPage('/search?q=五悠&page=1&sort=date_desc&target=keyword')
+    const { container, unmount } = renderSearchPage('/search?q=五悠&page=1&sort=date_desc&target=keyword')
 
-    act(() => {
-      getButton(container, '筛选器').click()
-    })
+    clickButtonContainingText(container, '筛选器')
 
-    const dialog = container.querySelector('[role="dialog"]')
-    if (!(dialog instanceof HTMLElement)) {
-      throw new Error('Filter dialog was not found')
-    }
+    const dialog = getElementBySelector(container, '[role="dialog"]', HTMLElement, 'Filter dialog')
 
-    const dateInputs = Array.from(dialog.querySelectorAll('input[type="date"]')) as HTMLInputElement[]
-    const numberInputs = Array.from(dialog.querySelectorAll('input[type="number"]')) as HTMLInputElement[]
-    const languageSelect = dialog.querySelector('select')
-    const switches = Array.from(dialog.querySelectorAll('input[type="checkbox"]')) as HTMLInputElement[]
+    const dateInputs = getElementsBySelector(dialog, 'input[type="date"]', HTMLInputElement, 'Date inputs')
+    const numberInputs = getElementsBySelector(dialog, 'input[type="number"]', HTMLInputElement, 'Number inputs')
+    const languageSelect = getElementBySelector(dialog, 'select', HTMLSelectElement, 'Language select')
+    const switches = getElementsBySelector(dialog, 'input[type="checkbox"]', HTMLInputElement, 'Switch inputs')
 
     expect(dateInputs.map((input) => input.value)).toEqual(['2025-04-26', '2026-04-26'])
     expect(numberInputs.map((input) => input.value)).toEqual(['1000', '4999', '3000'])
-    expect(languageSelect).toBeInstanceOf(HTMLSelectElement)
-    expect((languageSelect as HTMLSelectElement).value).toBe('zh-CN')
+    expect(languageSelect.value).toBe('zh-CN')
     expect(switches.map((input) => input.checked)).toEqual([true, false, true, false, false, true])
 
-    unmount(root, container)
+    unmount()
   })
 
   it('clears persisted date filters when the native date picker reset emits input events', async () => {
@@ -254,24 +231,19 @@ describe('SearchPage', () => {
       hasMore: false,
     })
 
-    const { container, root } = renderSearchPage('/search?q=五悠&page=1&sort=date_desc&target=keyword')
+    const { container, unmount } = renderSearchPage('/search?q=五悠&page=1&sort=date_desc&target=keyword')
 
-    act(() => {
-      getButton(container, '筛选器').click()
-    })
+    clickButtonContainingText(container, '筛选器')
 
-    const dateInputs = Array.from(container.querySelectorAll('input[type="date"]')) as HTMLInputElement[]
+    const dateInputs = getElementsBySelector(container, 'input[type="date"]', HTMLInputElement, 'Date inputs')
     expect(dateInputs.map((input) => input.value)).toEqual(['2025-04-26', '2026-04-26'])
 
-    act(() => {
-      for (const input of dateInputs) {
-        input.value = ''
-        input.dispatchEvent(new Event('input', { bubbles: true }))
-      }
-    })
+    for (const input of dateInputs) {
+      changeInputValue(input, '')
+    }
 
     await act(async () => {
-      getButton(container, '应用筛选').click()
+      getButtonContainingText(container, '应用筛选').click()
       await Promise.resolve()
     })
 
@@ -291,6 +263,6 @@ describe('SearchPage', () => {
     expect(useSearchStore.getState().filters.startDate).toBeUndefined()
     expect(useSearchStore.getState().filters.endDate).toBeUndefined()
 
-    unmount(root, container)
+    unmount()
   })
 })

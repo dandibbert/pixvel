@@ -1,7 +1,13 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import {
+  buildLocaleSetState,
+  buildLocaleToggleState,
+  getDefaultLocaleFromLanguage,
+  type Locale,
+} from './localeStoreModel'
 
-export type Locale = 'zh' | 'ja'
+export type { Locale } from './localeStoreModel'
 
 interface LocaleState {
   locale: Locale
@@ -10,18 +16,17 @@ interface LocaleState {
 }
 
 const getDefaultLocale = (): Locale => {
-  if (typeof navigator !== 'undefined' && navigator.language.toLowerCase().startsWith('ja')) {
-    return 'ja'
-  }
-  return 'zh'
+  return getDefaultLocaleFromLanguage(
+    typeof navigator === 'undefined' ? undefined : navigator.language,
+  )
 }
 
 export const useLocaleStore = create<LocaleState>()(
   persist(
     (set, get) => ({
       locale: getDefaultLocale(),
-      setLocale: (locale) => set({ locale }),
-      toggleLocale: () => set({ locale: get().locale === 'zh' ? 'ja' : 'zh' }),
+      setLocale: (locale) => set(buildLocaleSetState(locale)),
+      toggleLocale: () => set(buildLocaleToggleState(get().locale)),
     }),
     {
       name: 'locale-storage',

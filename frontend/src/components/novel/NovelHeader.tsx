@@ -1,6 +1,12 @@
 import { useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useEventListener } from '../../hooks/useEventListener'
 import { NovelDetail } from '../../types/novel'
+import { joinClassNames } from '../../utils/classNames'
+import {
+  buildNovelHeaderScrollState,
+  buildNovelHeaderViewModel,
+} from './novelHeaderModel'
 
 interface NovelHeaderProps {
   novel: NovelDetail
@@ -20,30 +26,34 @@ export default function NovelHeader({
   downloadTitle,
 }: NovelHeaderProps) {
   const navigate = useNavigate()
-  const [isVisible, setIsVisible] = useState(true)
-  const [lastScrollY, setLastScrollY] = useState(0)
+  const [scrollState, setScrollState] = useState({
+    isVisible: true,
+    lastScrollY: 0,
+  })
+  const viewModel = buildNovelHeaderViewModel({
+    authorId: novel.author.id,
+    isVisible: scrollState.isVisible,
+    canDownload,
+    downloadTitle,
+    hasRefreshAction: Boolean(onRefresh),
+    hasDownloadAction: Boolean(onDownload),
+  })
 
-  useEffect(() => {
-    const controlNavbar = () => {
-      if (typeof window !== 'undefined') {
-        if (window.scrollY > lastScrollY && window.scrollY > 100) {
-          setIsVisible(false)
-        } else {
-          setIsVisible(true)
-        }
-        setLastScrollY(window.scrollY)
-      }
-    }
-
-    window.addEventListener('scroll', controlNavbar)
-    return () => window.removeEventListener('scroll', controlNavbar)
-  }, [lastScrollY])
+  useEventListener(window, 'scroll', () => {
+    setScrollState((current) =>
+      buildNovelHeaderScrollState({
+        scrollY: window.scrollY,
+        lastScrollY: current.lastScrollY,
+      }),
+    )
+  })
 
   return (
-    <header 
-      className={`sticky top-0 z-50 bg-white border-b-2 border-muted px-4 py-2 md:px-8 transition-transform duration-300 ${
-        isVisible ? 'translate-y-0' : '-translate-y-full'
-      }`}
+    <header
+      className={joinClassNames(
+        'sticky top-0 z-50 bg-white border-b-2 border-muted px-4 py-2 md:px-8 transition-transform duration-300',
+        viewModel.visibilityClassName,
+      )}
     >
       <div className="max-w-4xl mx-auto flex items-center gap-3 md:gap-6">
         <button 
@@ -64,14 +74,13 @@ export default function NovelHeader({
           </h1>
           <button
             className="text-[10px] font-black text-primary uppercase tracking-widest truncate hover:text-primary/70 transition-colors"
-            onClick={() => navigate(`/author/${novel.author.id}`)}
+            onClick={() => navigate(viewModel.authorPath)}
           >
             {novel.author.name}
           </button>
         </div>
 
-        {/* Refresh button */}
-        {onRefresh && (
+        {viewModel.showRefreshAction && (
           <button
             onClick={onRefresh}
             className="text-foreground/40 hover:text-primary p-2 rounded-lg bg-muted transition-all"
@@ -83,13 +92,13 @@ export default function NovelHeader({
           </button>
         )}
 
-        {onDownload && (
+        {viewModel.showDownloadAction && (
           <button
             onClick={onDownload}
-            disabled={!canDownload}
+            disabled={viewModel.isDownloadDisabled}
             className="text-foreground/40 hover:text-primary p-2 rounded-lg bg-muted transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-foreground/40"
-            title={downloadTitle}
-            aria-label={downloadTitle}
+            title={viewModel.downloadTitle}
+            aria-label={viewModel.downloadTitle}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4m5 8H3" />

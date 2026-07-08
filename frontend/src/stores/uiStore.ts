@@ -1,20 +1,27 @@
 import { create } from 'zustand'
+import {
+  buildClosedModalMap,
+  buildNextThemeState,
+  buildOpenedModalMap,
+  buildSearchModalToggleState,
+  buildSidebarToggleState,
+  buildThemeState,
+  type Modal,
+  type ModalData,
+  type Theme,
+} from './uiStoreModel'
 
-interface Modal {
-  id: string
-  isOpen: boolean
-  data?: any
-}
+export type { Modal, ModalData, Theme } from './uiStoreModel'
 
-interface UiState {
-  theme: 'light' | 'dark'
+export interface UiState {
+  theme: Theme
   modals: Record<string, Modal>
   isSidebarOpen: boolean
   isSearchModalOpen: boolean
 
-  setTheme: (theme: 'light' | 'dark') => void
+  setTheme: (theme: Theme) => void
   toggleTheme: () => void
-  openModal: (id: string, data?: any) => void
+  openModal: (id: string, data?: ModalData) => void
   closeModal: (id: string) => void
   toggleSidebar: () => void
   toggleSearchModal: () => void
@@ -26,36 +33,24 @@ export const useUiStore = create<UiState>((set) => ({
   isSidebarOpen: false,
   isSearchModalOpen: false,
 
-  setTheme: (theme) => set({ theme }),
+  setTheme: (theme) => set(buildThemeState(theme)),
 
   toggleTheme: () =>
-    set((state) => ({
-      theme: state.theme === 'light' ? 'dark' : 'light',
-    })),
+    set((state) => buildNextThemeState(state.theme)),
 
   openModal: (id, data) =>
     set((state) => ({
-      modals: {
-        ...state.modals,
-        [id]: { id, isOpen: true, data },
-      },
+      modals: buildOpenedModalMap(state.modals, id, data),
     })),
 
   closeModal: (id) =>
     set((state) => ({
-      modals: {
-        ...state.modals,
-        [id]: { ...state.modals[id], isOpen: false },
-      },
+      modals: buildClosedModalMap(state.modals, id),
     })),
 
   toggleSidebar: () =>
-    set((state) => ({
-      isSidebarOpen: !state.isSidebarOpen,
-    })),
+    set((state) => buildSidebarToggleState(state.isSidebarOpen)),
 
   toggleSearchModal: () =>
-    set((state) => ({
-      isSearchModalOpen: !state.isSearchModalOpen,
-    })),
+    set((state) => buildSearchModalToggleState(state.isSearchModalOpen)),
 }))

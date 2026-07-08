@@ -1,17 +1,29 @@
 import { useState, useEffect } from 'react'
 import { useURLState } from '../hooks/useURLState'
+import { useNovelPreview } from '../hooks/useNovelPreview'
+import { EmptyPageState, LoadingPageState } from '../components/common/PageState'
 import NovelGrid from '../components/novel/NovelGrid'
 import NovelPreviewModal from '../components/novel/NovelPreviewModal'
 import Pagination from '../components/common/Pagination'
 import { Novel } from '../types/novel'
 import { api } from '../utils/api'
+import { navigateCurrentWindowToPath } from '../utils/appNavigation'
+import { setDocumentTitle } from '../utils/documentTitle'
+import { scrollViewportToTop } from '../utils/pageScroll'
+import { formatCountTemplate } from '../utils/textTemplate'
 import { useI18n } from '../i18n/useI18n'
+import {
+  buildBookmarkListDocumentTitle,
+  buildBookmarkListViewModel,
+  buildBookmarkListRequestParams,
+  getBookmarkListLoadErrorMessage,
+} from './listPageModel'
 
 export default function ListPage() {
   const { t, formatNumber } = useI18n()
 
   useEffect(() => {
-    document.title = t('list.documentTitleDefault')
+    setDocumentTitle(buildBookmarkListDocumentTitle(t('list.documentTitleDefault')))
   }, [t])
 
   const [urlState, setUrlState] = useURLState({ page: 1 })
@@ -19,11 +31,21 @@ export default function ListPage() {
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [selectedNovel, setSelectedNovel] = useState<Novel | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const novelPreview = useNovelPreview<Novel>()
 
   const limit = 20
-  const totalPages = Math.ceil(total / limit)
+  const viewModel = buildBookmarkListViewModel({
+    isLoading,
+    novelCount: novels.length,
+    total,
+    limit,
+    formatTotalLabel: (count) =>
+      formatCountTemplate({
+        template: t('list.total'),
+        count,
+        formatNumber,
+      }),
+  })
 
   useEffect(() => {
     loadBookmarks()
@@ -35,12 +57,12 @@ export default function ListPage() {
       setError(null)
       const response = await api.get<{ novels: Novel[]; total: number }>(
         '/bookmarks',
-        { page: urlState.page, limit }
+        buildBookmarkListRequestParams({ page: urlState.page, limit })
       )
       setNovels(response.novels)
       setTotal(response.total)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('list.loadErrorFallback'))
+      setError(getBookmarkListLoadErrorMessage(err, t('list.loadErrorFallback')))
     } finally {
       setIsLoading(false)
     }
@@ -48,12 +70,7 @@ export default function ListPage() {
 
   const handlePageChange = (newPage: number) => {
     setUrlState({ page: newPage })
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  const handleNovelClick = (novel: Novel) => {
-    setSelectedNovel(novel)
-    setIsModalOpen(true)
+    scrollViewportToTop()
   }
 
   return (
@@ -78,58 +95,41 @@ export default function ListPage() {
             </div>
           )}
 
-          {isLoading ? (
-            <div className="text-center py-16 md:py-20">
-              <div className="inline-block animate-bounce h-12 w-12 md:h-16 md:w-16 bg-primary rounded-lg flex items-center justify-center">
-                <div className="w-6 h-6 md:w-8 md:h-8 rounded-full border-4 border-white border-t-transparent animate-spin"></div>
-              </div>
-              <p className="mt-4 md:mt-6 text-lg md:text-2xl font-bold text-primary uppercase tracking-widest">{t('list.loading')}</p>
-            </div>
-          ) : novels.length > 0 ? (
+          {viewModel.state === 'loading' ? (
+            <LoadingPageState label={t('list.loading')} />
+          ) : viewModel.state === 'results' ? (
             <>
               <div className="mb-4 md:mb-6 flex items-center justify-between">
                 <div className="text-foreground/40 font-bold uppercase tracking-widest text-[10px] md:text-xs">
-                  {t('list.total').replace('{count}', formatNumber(total))}
+                  {viewModel.totalLabel}
                 </div>
               </div>
 
-              <NovelGrid novels={novels} onNovelClick={handleNovelClick} />
+              <NovelGrid novels={novels} onNovelClick={novelPreview.openPreview} />
 
-              {totalPages > 1 && (
+              {viewModel.showPagination && (
                 <div className="mt-12 md:mt-16">
                   <Pagination
                     currentPage={urlState.page}
-                    totalPages={totalPages}
+                    totalPages={viewModel.totalPages}
                     onPageChange={handlePageChange}
                   />
                 </div>
               )}
             </>
           ) : (
-            <div className="text-center py-16 md:py-24 bg-muted/50 rounded-xl">
-              <div className="flex justify-center mb-6 md:mb-8">
-                <div className="p-6 md:p-8 bg-muted rounded-full">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 md:h-20 md:w-20 text-foreground/10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                </div>
-              </div>
-              <p className="text-xl md:text-2xl font-bold text-foreground/30 uppercase mb-6">{t('list.empty')}</p>
-              <button
-                onClick={() => window.location.href = '/search'}
-                className="px-8 py-3 md:px-10 md:py-4 bg-primary text-white font-bold rounded-lg hover:scale-105 transition-all"
-              >
-                {t('list.discover')}
-              </button>
-            </div>
+            <EmptyPageState
+              label={t('list.empty')}
+              icon="book"
+              actionLabel={t('list.discover')}
+              onAction={() => navigateCurrentWindowToPath(viewModel.emptyActionPath)}
+            />
           )}
         </div>
       </div>
 
       <NovelPreviewModal
-        novel={selectedNovel}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        {...novelPreview.previewModalProps}
       />
     </div>
   )

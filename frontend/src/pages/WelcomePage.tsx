@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '../i18n/useI18n';
+import { setDocumentTitle } from '../utils/documentTitle';
 
 export default function WelcomePage() {
   const { t } = useI18n();
 
   useEffect(() => {
-    document.title = t('welcome.documentTitleDefault');
+    setDocumentTitle(t('welcome.documentTitleDefault'));
   }, [t]);
   return (
     <div className="min-h-screen bg-primary flex flex-col items-center justify-center p-6 overflow-hidden relative">

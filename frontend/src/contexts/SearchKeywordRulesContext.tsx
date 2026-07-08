@@ -6,6 +6,12 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react'
+import { useStoredStringState } from '../hooks/useStoredStringState'
+import {
+  BLOCKED_WORDS_STORAGE_KEY,
+  HIGHLIGHT_WORDS_STORAGE_KEY,
+  parseKeywordInput,
+} from './searchKeywordRulesModel'
 
 type SearchKeywordRulesContextValue = {
   blockedWordsInput: string
@@ -23,52 +29,20 @@ const SearchKeywordRulesContext = createContext<SearchKeywordRulesContextValue |
   undefined,
 )
 
-const BLOCKED_WORDS_STORAGE_KEY = 'search-keyword-rules-blocked-words'
-const HIGHLIGHT_WORDS_STORAGE_KEY = 'search-keyword-rules-highlight-words'
-
-function readStoredKeywordInput(storageKey: string): string {
-  try {
-    return window.localStorage.getItem(storageKey) ?? ''
-  } catch {
-    return ''
-  }
-}
-
-function writeStoredKeywordInput(storageKey: string, value: string) {
-  try {
-    window.localStorage.setItem(storageKey, value)
-  } catch {
-    return
-  }
-}
-
-function parseKeywordInput(input: string): string[] {
-  return Array.from(
-    new Set(
-      input
-        .split(',')
-        .map((word) => word.trim())
-        .filter((word) => word.length > 0),
-    ),
-  )
-}
-
 export function SearchKeywordRulesProvider({ children }: PropsWithChildren) {
-  const [blockedWordsInput, setBlockedWordsInputState] = useState(() => readStoredKeywordInput(BLOCKED_WORDS_STORAGE_KEY))
-  const [highlightWordsInput, setHighlightWordsInputState] = useState(() => readStoredKeywordInput(HIGHLIGHT_WORDS_STORAGE_KEY))
+  const [blockedWordsInput, setStoredBlockedWordsInput] = useStoredStringState(window.localStorage, BLOCKED_WORDS_STORAGE_KEY)
+  const [highlightWordsInput, setStoredHighlightWordsInput] = useStoredStringState(window.localStorage, HIGHLIGHT_WORDS_STORAGE_KEY)
   const [revealedBlockedIds, setRevealedBlockedIds] = useState<Set<string>>(new Set())
 
   const setBlockedWordsInput = useCallback((value: string) => {
-    writeStoredKeywordInput(BLOCKED_WORDS_STORAGE_KEY, value)
-    setBlockedWordsInputState(value)
+    setStoredBlockedWordsInput(value)
     setRevealedBlockedIds((previous) => (previous.size === 0 ? previous : new Set()))
-  }, [])
+  }, [setStoredBlockedWordsInput])
 
   const setHighlightWordsInput = useCallback((value: string) => {
-    writeStoredKeywordInput(HIGHLIGHT_WORDS_STORAGE_KEY, value)
-    setHighlightWordsInputState(value)
+    setStoredHighlightWordsInput(value)
     setRevealedBlockedIds((previous) => (previous.size === 0 ? previous : new Set()))
-  }, [])
+  }, [setStoredHighlightWordsInput])
 
   const revealBlockedId = useCallback((id: string) => {
     setRevealedBlockedIds((previous) => {

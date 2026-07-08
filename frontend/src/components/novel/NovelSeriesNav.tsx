@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { NovelSeries } from '../../hooks/useNovelDetail'
 import { useI18n } from '../../i18n/useI18n'
+import { resolveNovelSeriesNavState } from './novelSeriesNavModel'
 
 interface NovelSeriesNavProps {
   series: NovelSeries | null
@@ -8,8 +9,9 @@ interface NovelSeriesNavProps {
 
 export default function NovelSeriesNav({ series }: NovelSeriesNavProps) {
   const { t } = useI18n()
+  const navState = resolveNovelSeriesNavState(series)
 
-  if (!series || (!series.prev_novel && !series.next_novel)) {
+  if (!navState.shouldRender) {
     return null
   }
 
@@ -17,11 +19,11 @@ export default function NovelSeriesNav({ series }: NovelSeriesNavProps) {
     <div className="bg-muted/50 border-b border-border px-3 md:px-6 py-2 md:py-3">
       <div className="max-w-4xl mx-auto flex items-center justify-between gap-2 md:gap-4">
         <div className="flex-1 min-w-0">
-          {series.prev_novel ? (
+          {navState.prev.isAvailable ? (
             <Link
-              to={`/novel/${series.prev_novel.id}`}
+              to={navState.prev.path}
               className="inline-flex items-center gap-1.5 md:gap-2 px-3 py-2 rounded-lg bg-white border border-border hover:border-primary hover:bg-primary/5 text-xs md:text-sm text-foreground font-semibold min-h-[44px] touch-manipulation transition-all"
-              title={series.prev_novel.title}
+              title={navState.prev.title}
             >
               <svg
                 className="w-4 h-4 flex-shrink-0"
@@ -59,15 +61,15 @@ export default function NovelSeriesNav({ series }: NovelSeriesNavProps) {
         </div>
 
         <div className="text-center text-[10px] md:text-sm text-foreground/50 truncate max-w-[35%] md:max-w-[40%] font-semibold">
-          <span className="hidden md:inline">{t('seriesNav.prefix')}: </span>{series.title}
+          <span className="hidden md:inline">{t('seriesNav.prefix')}: </span>{navState.title}
         </div>
 
         <div className="flex-1 text-right min-w-0">
-          {series.next_novel ? (
+          {navState.next.isAvailable ? (
             <Link
-              to={`/novel/${series.next_novel.id}`}
+              to={navState.next.path}
               className="inline-flex items-center gap-1.5 md:gap-2 px-3 py-2 rounded-lg bg-white border border-border hover:border-primary hover:bg-primary/5 text-xs md:text-sm text-foreground font-semibold min-h-[44px] touch-manipulation transition-all"
-              title={series.next_novel.title}
+              title={navState.next.title}
             >
               <span>{t('seriesNav.next')}</span>
               <svg

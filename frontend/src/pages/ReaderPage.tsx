@@ -4,6 +4,12 @@ import { useNovelDetail } from '../hooks/useNovelDetail'
 import NovelReader from '../components/novel/NovelReader'
 import { useReaderStore } from '../stores/readerStore'
 import { useI18n } from '../i18n/useI18n'
+import { setDocumentTitle } from '../utils/documentTitle'
+import {
+  buildReaderDocumentTitle,
+  resolveReaderErrorMessage,
+  shouldShowReaderInitialLoading,
+} from './readerPageModel'
 
 export default function ReaderPage() {
   const { t } = useI18n()
@@ -11,26 +17,21 @@ export default function ReaderPage() {
   const { novel, series, isLoading, error } = useNovelDetail(id)
   const currentPage = useReaderStore((state) => state.currentPage)
   const totalPages = useReaderStore((state) => state.totalPages)
-  const shouldShowInitialLoading = isLoading && (!novel || novel.id !== id)
+  const shouldShowInitialLoading = shouldShowReaderInitialLoading({
+    isLoading,
+    requestedNovelId: id,
+    loadedNovel: novel,
+  })
 
   useEffect(() => {
-    if (shouldShowInitialLoading) {
-      document.title = t('reader.documentTitleLoading')
-      return
-    }
-
-    if (novel?.title) {
-      const pageInfo = totalPages > 0 ? ` (${currentPage}/${totalPages})` : ''
-      document.title = `${novel.title}${pageInfo} - Pixvel`
-      return
-    }
-
-    if (error) {
-      document.title = t('reader.documentTitleError')
-      return
-    }
-
-    document.title = t('reader.documentTitleDefault')
+    setDocumentTitle(buildReaderDocumentTitle({
+      shouldShowInitialLoading,
+      novelTitle: novel?.title,
+      currentPage,
+      totalPages,
+      error,
+      t,
+    }))
   }, [shouldShowInitialLoading, novel?.title, currentPage, totalPages, error, t])
 
   if (shouldShowInitialLoading) {
@@ -45,12 +46,7 @@ export default function ReaderPage() {
   }
 
   if (error) {
-    const errorMessage =
-      error === 'ERR_READER_CONTENT_EMPTY'
-        ? t('reader.contentEmptyError')
-        : error === 'ERR_READER_LOAD_FAILED'
-          ? t('reader.loadFailedError')
-          : error
+    const errorMessage = resolveReaderErrorMessage(error, t)
 
     return (
       <div className="flex items-center justify-center min-h-screen">

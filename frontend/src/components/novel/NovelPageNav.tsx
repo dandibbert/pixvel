@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { NovelSeries } from '../../hooks/useNovelDetail'
 import { useI18n } from '../../i18n/useI18n'
-
-type NavActionType = 'page' | 'series'
+import { buildNovelPath } from '../../utils/appNavigation'
+import { parseBoundedPageInput } from '../../utils/pageInput'
+import NovelPageNavAction from './NovelPageNavAction'
+import { resolveNovelPageNavState } from './novelPageNavModel'
 
 interface NovelPageNavProps {
   currentPage: number
@@ -25,27 +26,22 @@ export default function NovelPageNav({
   const { t } = useI18n()
   const [pageInput, setPageInput] = useState('')
 
-  const isOnFirstPage = currentPage === 1
-  const isOnLastPage = currentPage === totalPages
-  const canJumpPrevSeries = isOnFirstPage && !!series?.prev_novel
-  const canJumpNextSeries = isOnLastPage && !!series?.next_novel
-
-  const isPrevDisabled = isOnFirstPage && !series?.prev_novel
-  const isNextDisabled = isOnLastPage && !series?.next_novel
-
-  const getButtonStyle = (type: NavActionType, disabled: boolean) => {
-    if (disabled) {
-      return 'bg-muted text-foreground/25 border-2 border-transparent cursor-not-allowed'
-    }
-    return type === 'series'
-      ? 'bg-primary/10 text-primary border-2 border-primary/30 hover:bg-primary/20 hover:border-primary shadow-sm'
-      : 'bg-muted text-foreground/40 border-2 border-transparent hover:text-primary'
-  }
+  const {
+    canJumpPrevSeries,
+    canJumpNextSeries,
+    isPrevDisabled,
+    isNextDisabled,
+  } = resolveNovelPageNavState({
+    currentPage,
+    totalPages,
+    hasPrevSeries: Boolean(series?.prev_novel),
+    hasNextSeries: Boolean(series?.next_novel),
+  })
 
   const handlePageSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const page = parseInt(pageInput, 10)
-    if (!isNaN(page) && page >= 1 && page <= totalPages) {
+    const page = parseBoundedPageInput(pageInput, totalPages)
+    if (page !== null) {
       onGoToPage(page)
       setPageInput('')
     }
@@ -58,30 +54,30 @@ export default function NovelPageNav({
     >
       <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
         {canJumpPrevSeries && series?.prev_novel ? (
-          <Link
-            to={`/novel/${series.prev_novel.id}`}
-            className={`h-12 min-w-[48px] px-3 md:h-14 md:min-w-[56px] md:px-4 font-bold rounded-lg flex flex-col items-center justify-center gap-0.5 transition-all ${getButtonStyle('series', false)}`}
+          <NovelPageNavAction
+            type="series"
+            to={buildNovelPath(series.prev_novel.id)}
             title={`${t('pageNav.prevSeriesPrefix')}: ${series.prev_novel.title}`}
-            aria-label={`${t('pageNav.prevSeriesAriaPrefix')}: ${series.prev_novel.title}`}
+            ariaLabel={`${t('pageNav.prevSeriesAriaPrefix')}: ${series.prev_novel.title}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
             </svg>
             <span className="text-[9px] md:text-[10px] leading-none tracking-widest uppercase font-black">{t('pageNav.seriesBadge')}</span>
-          </Link>
+          </NovelPageNavAction>
         ) : (
-          <button
+          <NovelPageNavAction
+            type="page"
             onClick={onPrevPage}
             disabled={isPrevDisabled}
-            className={`h-12 w-12 md:h-14 md:w-14 font-black rounded-lg flex flex-col items-center justify-center gap-0.5 transition-all ${getButtonStyle('page', isPrevDisabled)}`}
             title={t('pageNav.prevPage')}
-            aria-label={t('pageNav.prevPage')}
+            ariaLabel={t('pageNav.prevPage')}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
             <span className="text-[9px] md:text-[10px] leading-none tracking-widest uppercase font-black">{t('pageNav.pageBadge')}</span>
-          </button>
+          </NovelPageNavAction>
         )}
 
         <div className="flex items-center gap-2 md:gap-4 flex-1 justify-center">
@@ -100,30 +96,30 @@ export default function NovelPageNav({
         </div>
 
         {canJumpNextSeries && series?.next_novel ? (
-          <Link
-            to={`/novel/${series.next_novel.id}`}
-            className={`h-12 min-w-[48px] px-3 md:h-14 md:min-w-[56px] md:px-4 font-bold rounded-lg flex flex-col items-center justify-center gap-0.5 transition-all ${getButtonStyle('series', false)}`}
+          <NovelPageNavAction
+            type="series"
+            to={buildNovelPath(series.next_novel.id)}
             title={`${t('pageNav.nextSeriesPrefix')}: ${series.next_novel.title}`}
-            aria-label={`${t('pageNav.nextSeriesAriaPrefix')}: ${series.next_novel.title}`}
+            ariaLabel={`${t('pageNav.nextSeriesAriaPrefix')}: ${series.next_novel.title}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
             </svg>
             <span className="text-[9px] md:text-[10px] leading-none tracking-widest uppercase font-black">{t('pageNav.seriesBadge')}</span>
-          </Link>
+          </NovelPageNavAction>
         ) : (
-          <button
+          <NovelPageNavAction
+            type="page"
             onClick={onNextPage}
             disabled={isNextDisabled}
-            className={`h-12 w-12 md:h-14 md:w-14 font-black rounded-lg flex flex-col items-center justify-center gap-0.5 transition-all ${getButtonStyle('page', isNextDisabled)}`}
             title={t('pageNav.nextPage')}
-            aria-label={t('pageNav.nextPage')}
+            ariaLabel={t('pageNav.nextPage')}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
             <span className="text-[9px] md:text-[10px] leading-none tracking-widest uppercase font-black">{t('pageNav.pageBadge')}</span>
-          </button>
+          </NovelPageNavAction>
         )}
       </div>
     </div>

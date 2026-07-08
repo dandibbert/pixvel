@@ -1,13 +1,17 @@
 import { act } from 'react'
-import { createRoot, Root } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  clickElement,
+  getAnchorByHref,
+  getButtonByLabel,
+  renderReactElement,
+  type RenderedReactElement,
+} from '../../test/domTestUtils'
 import Header from './Header'
 
-;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
-
 const mockToggleLocale = vi.fn()
-const mountedHeaders: Array<{ container: HTMLElement; root: Root }> = []
+const mountedHeaders: RenderedReactElement[] = []
 
 const translations: Record<string, string> = {
   'header.search': '検索',
@@ -49,42 +53,15 @@ vi.mock('../../contexts/SearchKeywordRulesContext', () => ({
 }))
 
 function renderHeader(initialEntry: string) {
-  const container = document.createElement('div')
-  document.body.appendChild(container)
+  const rendered = renderReactElement(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <Header />
+    </MemoryRouter>,
+  )
 
-  const root = createRoot(container)
+  mountedHeaders.push(rendered)
 
-  mountedHeaders.push({ container, root })
-
-  act(() => {
-    root.render(
-      <MemoryRouter initialEntries={[initialEntry]}>
-        <Header />
-      </MemoryRouter>
-    )
-  })
-
-  return { container, root }
-}
-
-function getLink(container: HTMLElement, href: string): HTMLAnchorElement {
-  const link = container.querySelector(`a[href="${href}"]`)
-
-  if (!(link instanceof HTMLAnchorElement)) {
-    throw new Error(`Link for ${href} was not found`)
-  }
-
-  return link
-}
-
-function getRulesButton(container: HTMLElement): HTMLButtonElement {
-  const button = container.querySelector('button[aria-label="キーワードルール"]')
-
-  if (!(button instanceof HTMLButtonElement)) {
-    throw new Error('Rules button was not found')
-  }
-
-  return button
+  return rendered
 }
 
 function cleanupMountedHeaders() {
@@ -95,26 +72,20 @@ function cleanupMountedHeaders() {
       continue
     }
 
-    act(() => {
-      mountedHeader.root.unmount()
-    })
-    mountedHeader.container.remove()
+    mountedHeader.unmount()
   }
 }
 
-function unmount(root: Root, container: HTMLElement) {
+function unmount(rendered: RenderedReactElement) {
   const mountedHeaderIndex = mountedHeaders.findIndex(
-    (mountedHeader) => mountedHeader.root === root && mountedHeader.container === container,
+    (mountedHeader) => mountedHeader.root === rendered.root && mountedHeader.container === rendered.container,
   )
 
   if (mountedHeaderIndex >= 0) {
     mountedHeaders.splice(mountedHeaderIndex, 1)
   }
 
-  act(() => {
-    root.unmount()
-  })
-  container.remove()
+  rendered.unmount()
 }
 
 describe('Header', () => {
@@ -130,11 +101,12 @@ describe('Header', () => {
   })
 
   it('renders the compact Japanese rules chip on the search route with the full aria-label preserved', () => {
-    const { container, root } = renderHeader('/search')
+    const rendered = renderHeader('/search')
+    const { container } = rendered
 
-    const searchLink = getLink(container, '/search')
-    const historyLink = getLink(container, '/history')
-    const rulesButton = getRulesButton(container)
+    const searchLink = getAnchorByHref(container, '/search')
+    const historyLink = getAnchorByHref(container, '/history')
+    const rulesButton = getButtonByLabel(container, 'キーワードルール')
 
     expect(searchLink.getAttribute('aria-current')).toBe('page')
     expect(historyLink.hasAttribute('aria-current')).toBe(false)
@@ -142,34 +114,34 @@ describe('Header', () => {
     expect(rulesButton.title).toBe('キーワードルール')
     expect(container.textContent).not.toContain('キーワードルール')
 
-    unmount(root, container)
+    unmount(rendered)
   })
 
   it('does not render the rules chip outside the search route and marks history as current on /history', () => {
-    const { container, root } = renderHeader('/history')
+    const rendered = renderHeader('/history')
+    const { container } = rendered
 
-    const searchLink = getLink(container, '/search')
-    const historyLink = getLink(container, '/history')
+    const searchLink = getAnchorByHref(container, '/search')
+    const historyLink = getAnchorByHref(container, '/history')
 
     expect(searchLink.hasAttribute('aria-current')).toBe(false)
     expect(historyLink.getAttribute('aria-current')).toBe('page')
     expect(container.querySelector('button[aria-label="キーワードルール"]')).toBeNull()
 
-    unmount(root, container)
+    unmount(rendered)
   })
 
   it('wires the rules button accessibility state and closes the panel on Escape', () => {
-    const { container, root } = renderHeader('/search')
+    const rendered = renderHeader('/search')
+    const { container } = rendered
 
-    const rulesButton = getRulesButton(container)
+    const rulesButton = getButtonByLabel(container, 'キーワードルール')
 
     expect(rulesButton.getAttribute('aria-controls')).toBe('header-keyword-rules-panel')
     expect(rulesButton.getAttribute('aria-expanded')).toBe('false')
     expect(container.querySelector('#header-keyword-rules-panel')).toBeNull()
 
-    act(() => {
-      rulesButton.click()
-    })
+    clickElement(rulesButton)
 
     expect(rulesButton.getAttribute('aria-expanded')).toBe('true')
     expect(container.querySelector('#header-keyword-rules-panel')).not.toBeNull()
@@ -183,6 +155,6 @@ describe('Header', () => {
     expect(rulesButton.getAttribute('aria-expanded')).toBe('false')
     expect(container.querySelector('#header-keyword-rules-panel')).toBeNull()
 
-    unmount(root, container)
+    unmount(rendered)
   })
 })

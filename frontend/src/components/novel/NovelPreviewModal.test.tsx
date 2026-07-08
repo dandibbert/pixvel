@@ -1,6 +1,10 @@
 import { act } from 'react'
-import { createRoot, Root } from 'react-dom/client'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  clickButtonContainingText,
+  getButtonContainingText,
+  renderReactElement,
+} from '../../test/domTestUtils'
 import NovelPreviewModal from './NovelPreviewModal'
 import { Novel } from '../../types/novel'
 
@@ -41,33 +45,7 @@ const novel: Novel = {
 }
 
 function renderNovelPreviewModal(onClose: () => void) {
-  const container = document.createElement('div')
-  document.body.appendChild(container)
-
-  const root = createRoot(container)
-
-  act(() => {
-    root.render(<NovelPreviewModal novel={novel} isOpen={true} onClose={onClose} />)
-  })
-
-  return { container, root }
-}
-
-function getButtonByText(container: HTMLElement, text: string): HTMLButtonElement {
-  const button = Array.from(container.querySelectorAll('button')).find((element) => element.textContent?.includes(text))
-
-  if (!button) {
-    throw new Error(`Button containing text "${text}" was not found`)
-  }
-
-  return button as HTMLButtonElement
-}
-
-function unmount(root: Root, container: HTMLElement) {
-  act(() => {
-    root.unmount()
-  })
-  container.remove()
+  return renderReactElement(<NovelPreviewModal novel={novel} isOpen={true} onClose={onClose} />)
 }
 
 describe('NovelPreviewModal', () => {
@@ -80,52 +58,46 @@ describe('NovelPreviewModal', () => {
 
   it('opens the author page in a new tab and closes the modal when author name is clicked', () => {
     const onClose = vi.fn()
-    const { container, root } = renderNovelPreviewModal(onClose)
+    const { container, unmount } = renderNovelPreviewModal(onClose)
 
-    act(() => {
-      getButtonByText(container, 'Author Name').click()
-    })
+    clickButtonContainingText(container, 'Author Name')
 
     expect(mockOpen).toHaveBeenCalledWith('/author/author-1', '_blank', 'noopener,noreferrer')
     expect(onClose).toHaveBeenCalledTimes(1)
 
-    unmount(root, container)
+    unmount()
   })
 
   it('opens the author page in a new tab and closes the modal when author avatar is clicked', () => {
     const onClose = vi.fn()
-    const { container, root } = renderNovelPreviewModal(onClose)
+    const { container, unmount } = renderNovelPreviewModal(onClose)
 
-    act(() => {
-      getButtonByText(container, 'A').click()
-    })
+    clickButtonContainingText(container, 'A')
 
     expect(mockOpen).toHaveBeenCalledWith('/author/author-1', '_blank', 'noopener,noreferrer')
     expect(onClose).toHaveBeenCalledTimes(1)
 
-    unmount(root, container)
+    unmount()
   })
 
   it('opens the series page in a new tab and closes the modal when series is clicked', () => {
     const onClose = vi.fn()
-    const { container, root } = renderNovelPreviewModal(onClose)
+    const { container, unmount } = renderNovelPreviewModal(onClose)
 
-    act(() => {
-      getButtonByText(container, '系列').click()
-    })
+    clickButtonContainingText(container, '系列')
 
     expect(mockOpen).toHaveBeenCalledWith('/series/series-1', '_blank', 'noopener,noreferrer')
     expect(onClose).toHaveBeenCalledTimes(1)
 
-    unmount(root, container)
+    unmount()
   })
 
   it('keeps the current-tab long-press menu action navigating in the current tab', () => {
     vi.useFakeTimers()
 
     const onClose = vi.fn()
-    const { container, root } = renderNovelPreviewModal(onClose)
-    const readNowButton = getButtonByText(container, '立即阅读')
+    const { container, unmount } = renderNovelPreviewModal(onClose)
+    const readNowButton = getButtonContainingText(container, '立即阅读')
 
     act(() => {
       readNowButton.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 120, clientY: 140 }))
@@ -135,14 +107,12 @@ describe('NovelPreviewModal', () => {
       vi.advanceTimersByTime(500)
     })
 
-    act(() => {
-      getButtonByText(container, '当前标签页打开').click()
-    })
+    clickButtonContainingText(container, '当前标签页打开')
 
     expect(mockNavigate).toHaveBeenCalledWith('/novel/novel-1')
     expect(mockOpen).not.toHaveBeenCalled()
 
-    unmount(root, container)
+    unmount()
     vi.useRealTimers()
   })
 })

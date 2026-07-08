@@ -1,15 +1,19 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useReaderStore } from '../../stores/readerStore'
 import { useNovelPagination } from '../../hooks/useNovelPagination'
+import { useEventListener } from '../../hooks/useEventListener'
 import { NovelSeries } from '../../hooks/useNovelDetail'
 import { useI18n } from '../../i18n/useI18n'
+import { buildNovelPath } from '../../utils/appNavigation'
+import { logErrorDescriptor } from '../../utils/errorLog'
 import { downloadNovelTxt } from '../../utils/novelDownload'
 import NovelHeader from './NovelHeader'
 import NovelContent from './NovelContent'
 import NovelPageNav from './NovelPageNav'
 import NovelSeriesNav from './NovelSeriesNav'
 import NovelDetailModal from './NovelDetailModal'
+import { resolveReaderNavigationAction } from './novelReaderModel'
 
 interface NovelReaderProps {
   series: NovelSeries | null
@@ -24,11 +28,6 @@ export default function NovelReader({ series }: NovelReaderProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
-
-  const isOnFirstPage = currentPage === 1
-  const isOnLastPage = totalPages > 0 ? currentPage === totalPages : true
-  const canJumpPrevSeries = isOnFirstPage && !!series?.prev_novel
-  const canJumpNextSeries = isOnLastPage && !!series?.next_novel
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true)
@@ -60,44 +59,54 @@ export default function NovelReader({ series }: NovelReaderProps) {
     try {
       downloadNovelTxt(novel, pages)
     } catch (error) {
-      console.error('Download novel error:', error)
+      logErrorDescriptor({ label: 'Download novel error:', value: error })
       setDownloadError(t('reader.downloadFailed'))
     }
   }, [novel, pages, t])
 
   const handlePrev = useCallback(() => {
-    if (canJumpPrevSeries && series?.prev_novel) {
-      navigate(`/novel/${series.prev_novel.id}`)
+    const action = resolveReaderNavigationAction({
+      direction: 'prev',
+      currentPage,
+      totalPages,
+      series,
+    })
+
+    if (action.type === 'series') {
+      navigate(buildNovelPath(action.novelId))
       return
     }
-    if (!isOnFirstPage) {
+
+    if (action.type === 'page') {
       goToPrevPage()
     }
-  }, [canJumpPrevSeries, series, navigate, isOnFirstPage, goToPrevPage])
+  }, [currentPage, totalPages, series, navigate, goToPrevPage])
 
   const handleNext = useCallback(() => {
-    if (canJumpNextSeries && series?.next_novel) {
-      navigate(`/novel/${series.next_novel.id}`)
+    const action = resolveReaderNavigationAction({
+      direction: 'next',
+      currentPage,
+      totalPages,
+      series,
+    })
+
+    if (action.type === 'series') {
+      navigate(buildNovelPath(action.novelId))
       return
     }
-    if (!isOnLastPage) {
+
+    if (action.type === 'page') {
       goToNextPage()
     }
-  }, [canJumpNextSeries, series, navigate, isOnLastPage, goToNextPage])
+  }, [currentPage, totalPages, series, navigate, goToNextPage])
 
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') {
-        handlePrev()
-      } else if (e.key === 'ArrowRight') {
-        handleNext()
-      }
+  useEventListener(window, 'keydown', (event) => {
+    if ((event as KeyboardEvent).key === 'ArrowLeft') {
+      handlePrev()
+    } else if ((event as KeyboardEvent).key === 'ArrowRight') {
+      handleNext()
     }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handlePrev, handleNext])
+  })
 
   if (!novel) {
     return null

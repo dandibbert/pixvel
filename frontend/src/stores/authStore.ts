@@ -1,15 +1,22 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { api } from '../utils/api'
-
-interface User {
-  id: string
-  name: string
-  account: string
-}
+import { logErrorDescriptor } from '../utils/errorLog'
+import {
+  buildAnonymousAuthState,
+  buildAuthenticatedAuthState,
+  buildAuthClearErrorState,
+  buildAuthErrorState,
+  buildAuthLoadingState,
+  buildAuthLogoutErrorLog,
+  buildAuthPersistSnapshot,
+  shouldLogAuthLogoutError,
+  type AuthStateSnapshot,
+  type AuthUser,
+} from './authStoreModel'
 
 interface AuthState {
-  user: User | null
+  user: AuthUser | null
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
@@ -21,7 +28,7 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>()(
-  persist(
+  persist<AuthState, [], [], AuthStateSnapshot>(
     (set) => ({
       user: null,
       isAuthenticated: false,
@@ -30,47 +37,31 @@ export const useAuthStore = create<AuthState>()(
 
       setupAuth: async (refreshToken: string) => {
         try {
-          set({ isLoading: true, error: null })
+          set(buildAuthLoadingState())
 
-          const response = await api.post<{ success: boolean; user: User }>(
+          const response = await api.post<{ success: boolean; user: AuthUser }>(
             '/auth/setup',
             { refreshToken }
           )
 
-          set({
-            user: response.user,
-            isAuthenticated: true,
-            isLoading: false,
-          })
+          set(buildAuthenticatedAuthState(response.user))
         } catch (error) {
-          set({
-            error: error instanceof Error ? error.message : 'Authentication failed',
-            isLoading: false,
-          })
+          set(buildAuthErrorState(error))
           throw error
         }
       },
 
       checkStatus: async () => {
         try {
-          const response = await api.get<{ authenticated: boolean; user?: User }>('/auth/status')
+          const response = await api.get<{ authenticated: boolean; user?: AuthUser }>('/auth/status')
 
           if (response.authenticated && response.user) {
-            set({
-              user: response.user,
-              isAuthenticated: true,
-            })
+            set(buildAuthenticatedAuthState(response.user))
           } else {
-            set({
-              user: null,
-              isAuthenticated: false,
-            })
+            set(buildAnonymousAuthState())
           }
         } catch (error) {
-          set({
-            user: null,
-            isAuthenticated: false,
-          })
+          set(buildAnonymousAuthState())
         }
       },
 
@@ -78,24 +69,20 @@ export const useAuthStore = create<AuthState>()(
         try {
           await api.post('/auth/logout')
         } catch (error) {
-          console.error('Logout error:', error)
+          if (shouldLogAuthLogoutError(error)) {
+            const errorLog = buildAuthLogoutErrorLog(error)
+            logErrorDescriptor(errorLog)
+          }
         } finally {
-          set({
-            user: null,
-            isAuthenticated: false,
-            error: null,
-          })
+          set(buildAnonymousAuthState())
         }
       },
 
-      clearError: () => set({ error: null }),
+      clearError: () => set(buildAuthClearErrorState()),
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({
-        user: state.user,
-        isAuthenticated: state.isAuthenticated,
-      }),
+      partialize: buildAuthPersistSnapshot,
     }
   )
 )

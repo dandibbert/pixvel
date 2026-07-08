@@ -2,6 +2,9 @@ import {
   type NovelKeywordCorpus,
   type NovelKeywordMatchResult,
 } from '../types/search'
+import { stripHtmlToPlainText } from './htmlText'
+import { compactTrimmedStrings } from './stringList'
+import { normalizeComparableText } from './textNormalize'
 
 export interface KeywordFilterNovelSource {
   title: string
@@ -18,22 +21,18 @@ export interface KeywordFilterNovelSource {
 const CARD_TAG_LIMIT = 3
 
 function normalizeText(value: string): string {
-  return value.trim().toLocaleLowerCase()
+  return normalizeComparableText(value)
 }
 
 function stripHtmlToText(value: string): string {
-  return value
-    .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
+  return stripHtmlToPlainText(value, {
+    tagReplacement: ' ',
+    collapseWhitespace: true,
+  })
 }
 
 function buildCorpus(parts: ReadonlyArray<string | undefined>): string {
-  return parts
-    .map((part) => (part ?? '').trim())
-    .filter((part) => part.length > 0)
-    .join('\n')
+  return compactTrimmedStrings(parts).join('\n')
 }
 
 function mergeUniqueParts(
@@ -43,10 +42,7 @@ function mergeUniqueParts(
   const merged: string[] = []
   const seen = new Set<string>()
 
-  for (const part of [...first, ...second]) {
-    const trimmed = (part ?? '').trim()
-    if (trimmed.length === 0) continue
-
+  for (const trimmed of compactTrimmedStrings([...first, ...second])) {
     const key = normalizeText(trimmed)
     if (seen.has(key)) continue
 
@@ -62,10 +58,7 @@ function collectKeywordHits(corpus: string, words: ReadonlyArray<string>): strin
   const seenWords = new Set<string>()
   const hits: string[] = []
 
-  for (const rawWord of words) {
-    const word = rawWord.trim()
-    if (word.length === 0) continue
-
+  for (const word of compactTrimmedStrings(words)) {
     const normalizedWord = normalizeText(word)
     if (seenWords.has(normalizedWord)) continue
 

@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react'
 import { messages } from './messages'
 import { Locale, useLocaleStore } from '../stores/localeStore'
+import { getIntlLocale } from '../utils/localeFormat'
 
 type SearchTarget = 'partial_match_for_tags' | 'exact_match_for_tags' | 'text' | 'keyword'
 type SearchSort = 'date_desc' | 'date_asc' | 'popular_desc'
@@ -16,7 +17,7 @@ export function useI18n() {
   )
 
   const formatter = useMemo(
-    () => new Intl.NumberFormat(locale === 'ja' ? 'ja-JP' : 'zh-CN'),
+    () => new Intl.NumberFormat(getIntlLocale(locale)),
     [locale]
   )
 

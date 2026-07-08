@@ -1,4 +1,5 @@
 import { useI18n } from '../../i18n/useI18n'
+import { joinClassNames } from '../../utils/classNames'
 
 interface SpinnerProps {
   size?: 'sm' | 'md' | 'lg'
@@ -13,9 +14,12 @@ export default function Spinner({ size = 'md', className = '' }: SpinnerProps) {
   }
 
   return (
-    <div className={`inline-block ${className}`}>
+    <div className={joinClassNames('inline-block', className)}>
       <div
-        className={`${sizeClasses[size]} border-4 border-gray-200 border-t-pixiv-blue rounded-full animate-spin`}
+        className={joinClassNames(
+          sizeClasses[size],
+          'border-4 border-gray-200 border-t-pixiv-blue rounded-full animate-spin',
+        )}
       ></div>
     </div>
   )
