@@ -2,75 +2,41 @@
  * Novel API routes
  */
 import { Hono } from "hono";
-import { getCookie } from "hono/helper/cookie/index.ts";
-import { PixivClient } from "../services/pixiv_client.ts";
-import { refreshAccessToken } from "../services/oauth_service.ts";
-import { getSession, updateTokens } from "../services/kv_store.ts";
+import { fetchPixivNovelContent } from "../services/novel_content.ts";
+import { buildNovelContentErrorResponse } from "../services/novel_content_model.ts";
+import { buildNovelSearchErrorResponse } from "../services/novel_search_params.ts";
+import { buildNovelSearchResponse } from "../services/novel_search.ts";
 import {
-  buildNovelSearchApiParams,
-  buildNovelSearchPagination,
-  InvalidSearchParameterError,
-} from "../services/novel_search_params.ts";
+  type PixivNovelDetailPayload,
+  type PixivNovelSummaryPayload,
+  transformPixivNovelDetail,
+} from "../services/novel_transformer.ts";
+import {
+  buildSeriesNovelListResponse,
+  buildUserNovelListResponse,
+} from "../services/novel_list.ts";
+import { resolvePixivNovelSeries } from "../services/novel_series.ts";
+import {
+  buildNovelContentSuccessBody,
+  buildNovelDetailApiPath,
+  buildNovelDetailRouteRequest,
+  buildNovelSearchApiPath,
+  buildNovelSearchRouteRequest,
+  buildNovelSeriesResolveRouteRequest,
+  buildSeriesNovelListRouteRequest,
+  buildSeriesNovelsApiPath,
+  buildUserNovelListRouteRequest,
+  buildUserNovelsApiPath,
+  NOVEL_SERIES_CACHE_HEADERS,
+} from "../services/novel_route_model.ts";
+import { createSessionPixivClient, requireSession } from "../services/route_auth.ts";
+import {
+  buildLoggedRouteErrorResponse,
+  buildRoutePublicErrorResponse,
+  logRouteError,
+} from "../services/route_response.ts";
 
 const novels = new Hono();
-
-interface Novel {
-  id: number;
-  title: string;
-  caption: string;
-  restrict: number;
-  x_restrict: number;
-  is_original: boolean;
-  image_urls: {
-    square_medium: string;
-    medium: string;
-    large: string;
-  };
-  create_date: string;
-  tags: Array<{
-    name: string;
-    translated_name: string | null;
-    added_by_uploaded_user: boolean;
-  }>;
-  page_count: number;
-  text_length: number;
-  user: {
-    id: number;
-    name: string;
-    account: string;
-    profile_image_urls: {
-      medium: string;
-    };
-    is_followed: boolean;
-  };
-  series: {
-    id: number;
-    title: string;
-  } | null;
-  is_bookmarked: boolean;
-  total_bookmarks: number;
-  total_view: number;
-  visible: boolean;
-  total_comments: number;
-  is_muted: boolean;
-  is_mypixiv_only: boolean;
-  is_x_restricted: boolean;
-}
-
-/**
- * Parse next_url to extract page number
- */
-function parseNextPage(nextUrl: string | null): number | null {
-  if (!nextUrl) return null;
-  try {
-    const url = new URL(nextUrl);
-    const offset = url.searchParams.get("offset");
-    if (!offset) return null;
-    return Math.floor(parseInt(offset) / 30) + 1;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * GET /api/novels/search
@@ -78,118 +44,29 @@ function parseNextPage(nextUrl: string | null): number | null {
  */
 novels.get("/search", async (c) => {
   try {
-    const sessionId = getCookie(c, "session_id");
-    if (!sessionId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
+    const auth = await requireSession(c);
+    if (!auth.ok) return auth.response;
 
-    const session = await getSession(sessionId);
-    if (!session) {
-      return c.json({ error: "Invalid session" }, 401);
-    }
+    const searchRequest = buildNovelSearchRouteRequest((name) => c.req.query(name));
+    const client = createSessionPixivClient(auth.sessionId, auth.session);
 
-    const word = c.req.query("word") || "";
-    if (!word) {
-      return c.json({ error: "Missing search keyword" }, 400);
-    }
-
-    let params: URLSearchParams;
-    try {
-      params = buildNovelSearchApiParams({
-        word,
-        sort: c.req.query("sort"),
-        search_target: c.req.query("search_target"),
-        start_date: c.req.query("start_date"),
-        end_date: c.req.query("end_date"),
-        bookmark_num: c.req.query("bookmark_num"),
-        bookmark_num_min: c.req.query("bookmark_num_min"),
-        bookmark_num_max: c.req.query("bookmark_num_max"),
-        text_length_min: c.req.query("text_length_min"),
-        include_potential_violation_works: c.req.query("include_potential_violation_works"),
-        include_translated_tag_results: c.req.query("include_translated_tag_results"),
-        is_original_only: c.req.query("is_original_only"),
-        is_replaceable_only: c.req.query("is_replaceable_only"),
-        merge_plain_keyword_results: c.req.query("merge_plain_keyword_results"),
-        search_ai_type: c.req.query("search_ai_type"),
-        lang: c.req.query("lang"),
-        page: c.req.query("page") || "1",
-      });
-    } catch (error) {
-      if (error instanceof InvalidSearchParameterError) {
-        return c.json({ error: error.message }, 400);
-      }
-      throw error;
-    }
-
-    const page = parseInt(c.req.query("page") || "1", 10);
-
-    // Create Pixiv client with token refresh callback
-    const client = new PixivClient(
-      session.accessToken,
-      session.refreshToken,
-      async (accessToken, refreshToken) => {
-        await updateTokens(
-          sessionId,
-          accessToken,
-          refreshToken,
-          Date.now() + 3600 * 1000,
-        );
-      },
-    );
-
-    // Call Pixiv API
     const response = await client.fetch<{
-      novels: Novel[];
+      novels: PixivNovelSummaryPayload[];
       next_url: string | null;
       search_span_limit: number;
-    }>(`/v1/search/novel?${params.toString()}`);
+    }>(buildNovelSearchApiPath(searchRequest.params));
 
-    // Parse next page
-    const hasMore = response.next_url !== null;
-
-    // Transform novels to match frontend interface
-    const transformedNovels = response.novels.map((novel) => ({
-      id: novel.id.toString(),
-      title: novel.title,
-      description: novel.caption,
-      author: {
-        id: novel.user.id.toString(),
-        name: novel.user.name,
-        avatar: novel.user.profile_image_urls.medium,
-      },
-      coverImage: novel.image_urls.large,
-      tags: novel.tags.map((tag) => tag.name),
-      pageCount: novel.page_count || 0,
-      textLength: novel.text_length || 0,
-      totalBookmarks: novel.total_bookmarks || 0,
-      totalViews: novel.total_view || 0,
-      createdAt: novel.create_date,
-      updatedAt: novel.create_date,
-      series: novel.series
-        ? {
-          id: novel.series.id?.toString() || "",
-          title: novel.series.title || "",
-        }
-        : undefined,
-    }));
-
-    const pagination = buildNovelSearchPagination({
-      page,
-      hasMore,
+    return c.json(buildNovelSearchResponse({
+      novels: response.novels,
+      nextUrl: response.next_url,
       searchSpanLimit: response.search_span_limit,
-    });
-
-    return c.json({
-      novels: transformedNovels,
-      total: pagination.total,
-      page,
-      totalPages: pagination.totalPages,
-    });
+      page: searchRequest.page,
+    }));
   } catch (error) {
-    console.error("Search error:", error);
-    return c.json({
-      error: "Search failed",
-    }, 500);
+    const errorResponse = buildNovelSearchErrorResponse(error) ??
+      buildRoutePublicErrorResponse(error, "Search failed", 500);
+    logRouteError(errorResponse, "Search error:", error);
+    return c.json(errorResponse.body, errorResponse.status);
   }
 });
 
@@ -199,89 +76,34 @@ novels.get("/search", async (c) => {
  */
 novels.get("/user/:userId", async (c) => {
   try {
-    const sessionId = getCookie(c, "session_id");
-    if (!sessionId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
+    const auth = await requireSession(c);
+    if (!auth.ok) return auth.response;
 
-    const session = await getSession(sessionId);
-    if (!session) {
-      return c.json({ error: "Invalid session" }, 401);
-    }
-
-    const userId = c.req.param("userId");
-    if (!userId) {
-      return c.json({ error: "Missing user ID" }, 400);
-    }
-
-    const page = parseInt(c.req.query("page") || "1");
-    const offset = (page - 1) * 30;
-    const params = new URLSearchParams({
-      user_id: userId,
+    const listRequest = buildUserNovelListRouteRequest({
+      userId: c.req.param("userId"),
+      page: c.req.query("page"),
     });
-    if (offset > 0) params.set("offset", offset.toString());
 
-    const client = new PixivClient(
-      session.accessToken,
-      session.refreshToken,
-      async (accessToken, refreshToken) => {
-        await updateTokens(
-          sessionId,
-          accessToken,
-          refreshToken,
-          Date.now() + 3600 * 1000,
-        );
-      },
-    );
+    const client = createSessionPixivClient(auth.sessionId, auth.session);
 
     const response = await client.fetch<{
-      novels: Novel[];
+      novels: PixivNovelSummaryPayload[];
       next_url: string | null;
-    }>(`/v1/user/novels?${params.toString()}`);
+    }>(buildUserNovelsApiPath(listRequest.params));
 
-    const hasMore = response.next_url !== null;
-    const nextPage = parseNextPage(response.next_url);
-
-    const transformedNovels = response.novels.map((novel) => ({
-      id: novel.id.toString(),
-      title: novel.title,
-      description: novel.caption,
-      author: {
-        id: novel.user.id.toString(),
-        name: novel.user.name,
-        avatar: novel.user.profile_image_urls.medium,
-      },
-      coverImage: novel.image_urls.large,
-      tags: novel.tags.map((tag) => tag.name),
-      pageCount: novel.page_count || 0,
-      textLength: novel.text_length || 0,
-      totalBookmarks: novel.total_bookmarks || 0,
-      totalViews: novel.total_view || 0,
-      createdAt: novel.create_date,
-      updatedAt: novel.create_date,
-      series: novel.series
-        ? {
-          id: novel.series.id?.toString() || "",
-          title: novel.series.title || "",
-        }
-        : undefined,
+    return c.json(buildUserNovelListResponse({
+      userId: listRequest.id,
+      novels: response.novels,
+      page: listRequest.page,
+      nextUrl: response.next_url,
     }));
-
-    const author = transformedNovels[0]?.author;
-
-    return c.json({
-      author: author || { id: userId, name: "Unknown" },
-      novels: transformedNovels,
-      page,
-      nextPage,
-      hasMore,
-    });
   } catch (error) {
-    console.error("User novels error:", error);
-    return c.json({
-      error: "Failed to fetch user novels",
-      message: (error as Error).message,
-    }, 500);
+    const errorResponse = buildLoggedRouteErrorResponse(
+      error,
+      "Failed to fetch user novels",
+      "User novels error:",
+    );
+    return c.json(errorResponse.body, errorResponse.status);
   }
 });
 
@@ -291,98 +113,41 @@ novels.get("/user/:userId", async (c) => {
  */
 novels.get("/series/:seriesId", async (c) => {
   try {
-    const sessionId = getCookie(c, "session_id");
-    if (!sessionId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
+    const auth = await requireSession(c);
+    if (!auth.ok) return auth.response;
 
-    const session = await getSession(sessionId);
-    if (!session) {
-      return c.json({ error: "Invalid session" }, 401);
-    }
-
-    const seriesId = c.req.param("seriesId");
-    if (!seriesId) {
-      return c.json({ error: "Missing series ID" }, 400);
-    }
-
-    const page = parseInt(c.req.query("page") || "1");
-    const offset = (page - 1) * 30;
-    const params = new URLSearchParams({
-      series_id: seriesId,
+    const listRequest = buildSeriesNovelListRouteRequest({
+      seriesId: c.req.param("seriesId"),
+      page: c.req.query("page"),
     });
-    if (offset > 0) params.set("offset", offset.toString());
 
-    // Create Pixiv client
-    const client = new PixivClient(
-      session.accessToken,
-      session.refreshToken,
-      async (accessToken, refreshToken) => {
-        await updateTokens(
-          sessionId,
-          accessToken,
-          refreshToken,
-          Date.now() + 3600 * 1000,
-        );
-      },
-    );
+    const client = createSessionPixivClient(auth.sessionId, auth.session);
 
     const response = await client.fetch<{
       novel_series_detail?: {
         id: number;
         title: string;
       };
-      novels: Novel[];
+      novels: PixivNovelSummaryPayload[];
       next_url: string | null;
-    }>(`/v2/novel/series?${params.toString()}`);
+    }>(buildSeriesNovelsApiPath(listRequest.params));
 
-    const hasMore = response.next_url !== null;
-    const nextPage = parseNextPage(response.next_url);
     const seriesTitle = response.novel_series_detail?.title || "";
 
-    const transformedNovels = response.novels.map((novel) => ({
-      id: novel.id.toString(),
-      title: novel.title,
-      description: novel.caption,
-      author: {
-        id: novel.user.id.toString(),
-        name: novel.user.name,
-        avatar: novel.user.profile_image_urls.medium,
-      },
-      coverImage: novel.image_urls.large,
-      tags: novel.tags.map((tag) => tag.name),
-      pageCount: novel.page_count || 0,
-      textLength: novel.text_length || 0,
-      totalBookmarks: novel.total_bookmarks || 0,
-      totalViews: novel.total_view || 0,
-      createdAt: novel.create_date,
-      updatedAt: novel.create_date,
-      series: novel.series
-        ? {
-          id: novel.series.id?.toString() || "",
-          title: novel.series.title || "",
-        }
-        : seriesTitle
-        ? { id: seriesId, title: seriesTitle }
-        : undefined,
+    return c.json(buildSeriesNovelListResponse({
+      seriesId: listRequest.id,
+      seriesTitle,
+      novels: response.novels,
+      page: listRequest.page,
+      nextUrl: response.next_url,
     }));
-
-    return c.json({
-      series: {
-        id: seriesId,
-        title: seriesTitle,
-      },
-      novels: transformedNovels,
-      page,
-      nextPage,
-      hasMore,
-    });
   } catch (error) {
-    console.error("Novel series list error:", error);
-    return c.json({
-      error: "Failed to fetch series list",
-      message: (error as Error).message,
-    }, 500);
+    const errorResponse = buildLoggedRouteErrorResponse(
+      error,
+      "Failed to fetch series list",
+      "Novel series list error:",
+    );
+    return c.json(errorResponse.body, errorResponse.status);
   }
 });
 
@@ -392,78 +157,26 @@ novels.get("/series/:seriesId", async (c) => {
  */
 novels.get("/:id", async (c) => {
   try {
-    const sessionId = getCookie(c, "session_id");
-    if (!sessionId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
+    const auth = await requireSession(c);
+    if (!auth.ok) return auth.response;
 
-    const session = await getSession(sessionId);
-    if (!session) {
-      return c.json({ error: "Invalid session" }, 401);
-    }
+    const detailRequest = buildNovelDetailRouteRequest({
+      novelId: c.req.param("id"),
+    });
+    const client = createSessionPixivClient(auth.sessionId, auth.session);
 
-    const novelId = c.req.param("id");
-    if (!novelId) {
-      return c.json({ error: "Missing novel ID" }, 400);
-    }
-
-    // Create Pixiv client
-    const client = new PixivClient(
-      session.accessToken,
-      session.refreshToken,
-      async (accessToken, refreshToken) => {
-        await updateTokens(
-          sessionId,
-          accessToken,
-          refreshToken,
-          Date.now() + 3600 * 1000,
-        );
-      },
-    );
-
-    // Call Pixiv API
     const response = await client.fetch<{
-      novel: Novel & {
-        text: string;
-      };
-    }>(`/v2/novel/detail?novel_id=${novelId}`);
+      novel: PixivNovelDetailPayload;
+    }>(buildNovelDetailApiPath(detailRequest.novelId));
 
-    // Transform novel to match frontend interface
-    const novel = response.novel;
-    const transformedNovel = {
-      id: novel.id?.toString() || "",
-      title: novel.title || "",
-      description: novel.caption || "",
-      author: {
-        id: novel.user?.id?.toString() || "",
-        name: novel.user?.name || "",
-        avatar: novel.user?.profile_image_urls?.medium,
-      },
-      coverImage: novel.image_urls?.large,
-      tags: novel.tags?.map((tag) => tag.name) || [],
-      pageCount: novel.page_count || 0,
-      textLength: novel.text_length || 0,
-      totalBookmarks: novel.total_bookmarks || 0,
-      totalViews: novel.total_view || 0,
-      createdAt: novel.create_date || new Date().toISOString(),
-      updatedAt: novel.create_date || new Date().toISOString(),
-      content: novel.text || "",
-      pages: [],
-      series: novel.series
-        ? {
-          id: novel.series.id?.toString() || "",
-          title: novel.series.title || "",
-        }
-        : undefined,
-    };
-
-    return c.json(transformedNovel);
+    return c.json(transformPixivNovelDetail(response.novel));
   } catch (error) {
-    console.error("Novel detail error:", error);
-    return c.json({
-      error: "Failed to fetch novel details",
-      message: (error as Error).message,
-    }, 500);
+    const errorResponse = buildLoggedRouteErrorResponse(
+      error,
+      "Failed to fetch novel details",
+      "Novel detail error:",
+    );
+    return c.json(errorResponse.body, errorResponse.status);
   }
 });
 
@@ -473,84 +186,25 @@ novels.get("/:id", async (c) => {
  */
 novels.get("/:id/content", async (c) => {
   try {
-    const sessionId = getCookie(c, "session_id");
-    if (!sessionId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
+    const auth = await requireSession(c);
+    if (!auth.ok) return auth.response;
 
-    const session = await getSession(sessionId);
-    if (!session) {
-      return c.json({ error: "Invalid session" }, 401);
-    }
-
-    const novelId = c.req.param("id");
-    if (!novelId) {
-      return c.json({ error: "Missing novel ID" }, 400);
-    }
-
-    // Build URL
-    const url = `https://app-api.pixiv.net/webview/v2/novel?id=${novelId}`;
-
-    const buildHeaders = (accessToken: string): Record<string, string> => ({
-      "Authorization": `Bearer ${accessToken}`,
-      "User-Agent": "PixivAndroidApp/5.0.234 (Android 11; Pixel 5)",
-      "Accept-Language": "zh-CN",
-      "App-OS": "android",
-      "App-OS-Version": "11",
-      "App-Version": "5.0.234",
+    const detailRequest = buildNovelDetailRouteRequest({
+      novelId: c.req.param("id"),
     });
 
-    // Fetch HTML directly (retry once on auth error)
-    let response = await fetch(url, { headers: buildHeaders(session.accessToken) });
-    if (!response.ok && (response.status === 400 || response.status === 401)) {
-      const tokenResponse = await refreshAccessToken(session.refreshToken);
-      await updateTokens(
-        sessionId,
-        tokenResponse.access_token,
-        tokenResponse.refresh_token,
-        Date.now() + tokenResponse.expires_in * 1000,
-      );
-      response = await fetch(url, { headers: buildHeaders(tokenResponse.access_token) });
-    }
-
-    if (!response.ok) {
-      throw new Error(`Pixiv API error (${response.status}): ${response.statusText}`);
-    }
-
-    const html = await response.text();
-
-    // Extract JSON from HTML using regex (same as Flutter implementation)
-    const novelRegex = /novel: ({.*?}),\n\s*isOwnWork/;
-    const match = html.match(novelRegex);
-
-    if (!match || !match[1]) {
-      console.error("Failed to extract novel JSON from HTML");
-      return c.json({
-        error: "Novel content not available",
-        message: "Failed to parse novel content from response",
-      }, 404);
-    }
-
-    const novelJson = JSON.parse(match[1]);
-
-    if (!novelJson.text) {
-      console.error("Novel text is missing in extracted JSON:", novelJson);
-      return c.json({
-        error: "Novel content not available",
-        message: "The novel text is empty or unavailable",
-      }, 404);
-    }
-
-    return c.json({
-      content: novelJson.text,
-      novelId: parseInt(novelId),
+    const content = await fetchPixivNovelContent({
+      novelId: detailRequest.novelId,
+      accessToken: auth.session.accessToken,
+      refreshToken: auth.session.refreshToken,
+      sessionId: auth.sessionId,
     });
+
+    return c.json(buildNovelContentSuccessBody(content, detailRequest.novelId));
   } catch (error) {
-    console.error("Novel content error:", error);
-    return c.json({
-      error: "Failed to fetch novel content",
-      message: (error as Error).message,
-    }, 500);
+    const errorResponse = buildNovelContentErrorResponse(error);
+    logRouteError(errorResponse, errorResponse.logLabel, errorResponse.logValue);
+    return c.json(errorResponse.body, errorResponse.status);
   }
 });
 
@@ -560,144 +214,38 @@ novels.get("/:id/content", async (c) => {
  */
 novels.get("/:id/series", async (c) => {
   try {
-    const sessionId = getCookie(c, "session_id");
-    if (!sessionId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
+    const auth = await requireSession(c);
+    if (!auth.ok) return auth.response;
 
-    const session = await getSession(sessionId);
-    if (!session) {
-      return c.json({ error: "Invalid session" }, 401);
-    }
+    const seriesResolveRequest = buildNovelSeriesResolveRouteRequest({
+      novelId: c.req.param("id"),
+      seriesId: c.req.query("series_id"),
+      seriesTitle: c.req.query("series_title"),
+    });
+    const client = createSessionPixivClient(auth.sessionId, auth.session);
+    const series = await resolvePixivNovelSeries({
+      novelId: seriesResolveRequest.novelId,
+      hintedSeriesId: seriesResolveRequest.hintedSeriesId,
+      hintedSeriesTitle: seriesResolveRequest.hintedSeriesTitle,
+      client,
+    });
 
-    const novelId = c.req.param("id");
-    if (!novelId) {
-      return c.json({ error: "Missing novel ID" }, 400);
-    }
-
-    // Optional: Accept series_id and series_title from query params to skip detail call
-    const hintedSeriesId = c.req.query("series_id");
-    const hintedSeriesTitle = c.req.query("series_title") || "";
-
-    // Create Pixiv client
-    const client = new PixivClient(
-      session.accessToken,
-      session.refreshToken,
-      async (accessToken, refreshToken) => {
-        await updateTokens(
-          sessionId,
-          accessToken,
-          refreshToken,
-          Date.now() + 3600 * 1000,
-        );
-      },
-    );
-
-    const novelIdNumber = parseInt(novelId, 10);
-    let seriesId: number;
-    let seriesTitle = hintedSeriesTitle;
-
-    // If series_id is provided, skip the detail API call
-    if (hintedSeriesId) {
-      const parsedSeriesId = parseInt(hintedSeriesId, 10);
-      if (isNaN(parsedSeriesId)) {
-        return c.json({ error: "Invalid series_id" }, 400);
-      }
-      seriesId = parsedSeriesId;
-    } else {
-      // Fallback: get novel details to check if it has a series
-      const detailResponse = await client.fetch<{
-        novel: Novel;
-      }>(`/v2/novel/detail?novel_id=${novelId}`);
-
-      if (!detailResponse.novel.series) {
-        return c.json(null);
-      }
-
-      seriesId = detailResponse.novel.series.id;
-      if (!seriesTitle) {
-        seriesTitle = detailResponse.novel.series?.title || "";
-      }
-    }
-    let prevNovel: { id: string; title: string } | null = null;
-    let nextNovel: { id: string; title: string } | null = null;
-
-    try {
-      // Prefer novel text API: returns series_prev/series_next across long series.
-      const textResponse = await client.fetch<{
-        series_prev: { id?: number; title?: string } | null;
-        series_next: { id?: number; title?: string } | null;
-      }>(`/v1/novel/text?novel_id=${novelId}`);
-
-      if (textResponse.series_prev?.id) {
-        prevNovel = {
-          id: textResponse.series_prev.id.toString(),
-          title: textResponse.series_prev.title || "",
-        };
-      }
-      if (textResponse.series_next?.id) {
-        nextNovel = {
-          id: textResponse.series_next.id.toString(),
-          title: textResponse.series_next.title || "",
-        };
-      }
-    } catch {
-      // Fallback to /v2/novel/series pagination when /v1/novel/text fails.
-      let nextUrl: string | null = `/v2/novel/series?series_id=${seriesId}`;
-      let safety = 0;
-
-      while (nextUrl && safety < 30 && (!prevNovel || !nextNovel)) {
-        safety += 1;
-        const seriesResponse: {
-          novel_series_detail?: { id: number; title: string };
-          novels: Novel[];
-          next_url: string | null;
-        } = await client.fetch(nextUrl);
-
-        if (!seriesTitle && seriesResponse.novel_series_detail?.title) {
-          seriesTitle = seriesResponse.novel_series_detail.title;
-        }
-
-        const novels = seriesResponse.novels || [];
-        const currentIndex = novels.findIndex((n) => n.id === novelIdNumber);
-        if (currentIndex >= 0) {
-          if (currentIndex > 0) {
-            prevNovel = {
-              id: novels[currentIndex - 1].id.toString(),
-              title: novels[currentIndex - 1].title,
-            };
-          }
-          if (currentIndex < novels.length - 1) {
-            nextNovel = {
-              id: novels[currentIndex + 1].id.toString(),
-              title: novels[currentIndex + 1].title,
-            };
-          }
-          break;
-        }
-
-        nextUrl = seriesResponse.next_url;
-      }
+    if (!series) {
+      return c.json(null);
     }
 
     return c.json(
-      {
-        id: seriesId.toString(),
-        title: seriesTitle,
-        ...(prevNovel ? { prev_novel: prevNovel } : {}),
-        ...(nextNovel ? { next_novel: nextNovel } : {}),
-      },
+      series,
       200,
-      {
-        "Cache-Control": "private, max-age=30",
-      },
+      NOVEL_SERIES_CACHE_HEADERS,
     );
   } catch (error) {
-    console.error("Novel series error:", error);
-    return c.json({
-      error: "Failed to fetch series information",
-      message: (error as Error).message,
-    }, 500);
+    const errorResponse = buildLoggedRouteErrorResponse(
+      error,
+      "Failed to fetch series information",
+      "Novel series error:",
+    );
+    return c.json(errorResponse.body, errorResponse.status);
   }
 });
 

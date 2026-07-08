@@ -1,7 +1,20 @@
+import {
+  buildRoutePublicClientErrorResponse,
+  type RouteErrorResponse,
+} from "./route_response.ts";
+import { buildUrlSearchParams } from "./url_search_params.ts";
+
 export class InvalidSearchParameterError extends Error {
   constructor(parameter: string) {
     super(`Invalid ${parameter}`);
     this.name = "InvalidSearchParameterError";
+  }
+}
+
+export class MissingNovelSearchKeywordError extends Error {
+  constructor() {
+    super("Missing search keyword");
+    this.name = "MissingNovelSearchKeywordError";
   }
 }
 
@@ -25,6 +38,27 @@ export interface NovelSearchQuery {
   page?: string;
 }
 
+export interface NovelSearchRequest {
+  params: URLSearchParams;
+  page: number;
+}
+
+type NovelSearchQueryReader = (name: string) => string | undefined;
+
+type OptionalNovelSearchQueryField = Exclude<keyof NovelSearchQuery, "word" | "page">;
+type EnumNovelSearchFilterField = "sort" | "search_target" | "search_ai_type" | "lang";
+type DateNovelSearchFilterField = "start_date" | "end_date";
+type PositiveIntegerNovelSearchFilterField =
+  | "bookmark_num_min"
+  | "bookmark_num_max"
+  | "text_length_min";
+type BooleanNovelSearchFilterField =
+  | "include_potential_violation_works"
+  | "include_translated_tag_results"
+  | "is_original_only"
+  | "is_replaceable_only"
+  | "merge_plain_keyword_results";
+
 const VALID_SORT_VALUES = new Set(["date_desc", "date_asc", "popular_desc"]);
 const VALID_SEARCH_TARGET_VALUES = new Set([
   "partial_match_for_tags",
@@ -42,6 +76,71 @@ const MAX_PAGE = 100;
 const MAX_BOOKMARK_NUM = 999_999;
 const MAX_TEXT_LENGTH = 1_000_000;
 const ITEMS_PER_PAGE = 30;
+
+export const NOVEL_SEARCH_FILTER_FIELDS = {
+  optionalQuery: [
+    "sort",
+    "search_target",
+    "start_date",
+    "end_date",
+    "bookmark_num",
+    "bookmark_num_min",
+    "bookmark_num_max",
+    "text_length_min",
+    "include_potential_violation_works",
+    "include_translated_tag_results",
+    "is_original_only",
+    "is_replaceable_only",
+    "merge_plain_keyword_results",
+    "search_ai_type",
+    "lang",
+  ],
+  enum: ["sort", "search_target", "search_ai_type", "lang"],
+  date: ["start_date", "end_date"],
+  positiveInteger: ["bookmark_num_min", "bookmark_num_max", "text_length_min"],
+  boolean: [
+    "include_potential_violation_works",
+    "include_translated_tag_results",
+    "is_original_only",
+    "is_replaceable_only",
+    "merge_plain_keyword_results",
+  ],
+} satisfies {
+  optionalQuery: readonly OptionalNovelSearchQueryField[];
+  enum: readonly EnumNovelSearchFilterField[];
+  date: readonly DateNovelSearchFilterField[];
+  positiveInteger: readonly PositiveIntegerNovelSearchFilterField[];
+  boolean: readonly BooleanNovelSearchFilterField[];
+};
+
+const ENUM_FILTER_VALUES: Record<EnumNovelSearchFilterField, Set<string>> = {
+  sort: VALID_SORT_VALUES,
+  search_target: VALID_SEARCH_TARGET_VALUES,
+  search_ai_type: VALID_SEARCH_AI_TYPE_VALUES,
+  lang: VALID_LANG_VALUES,
+};
+
+const POSITIVE_INTEGER_FILTER_LIMITS: Record<PositiveIntegerNovelSearchFilterField, number> = {
+  bookmark_num_min: MAX_BOOKMARK_NUM,
+  bookmark_num_max: MAX_BOOKMARK_NUM,
+  text_length_min: MAX_TEXT_LENGTH,
+};
+
+export function collectNovelSearchQuery(readQuery: NovelSearchQueryReader): NovelSearchQuery {
+  const query: NovelSearchQuery = {
+    word: readQuery("word") || "",
+    page: readQuery("page") || "1",
+  };
+
+  for (const field of NOVEL_SEARCH_FILTER_FIELDS.optionalQuery) {
+    const value = readQuery(field);
+    if (value !== undefined) {
+      query[field] = value;
+    }
+  }
+
+  return query;
+}
 
 export function buildNovelSearchPagination({
   page,
@@ -146,7 +245,11 @@ function validateRanges(query: NovelSearchQuery) {
     query.bookmark_num_min ?? query.bookmark_num,
     MAX_BOOKMARK_NUM,
   );
-  const bookmarkMax = parsePositiveInteger("bookmark_num_max", query.bookmark_num_max, MAX_BOOKMARK_NUM);
+  const bookmarkMax = parsePositiveInteger(
+    "bookmark_num_max",
+    query.bookmark_num_max,
+    MAX_BOOKMARK_NUM,
+  );
   if (bookmarkMin !== undefined && bookmarkMax !== undefined && bookmarkMin > bookmarkMax) {
     throw new InvalidSearchParameterError("bookmark_num_range");
   }
@@ -156,37 +259,62 @@ export function buildNovelSearchApiParams(query: NovelSearchQuery): URLSearchPar
   validateWord(query.word);
   validateRanges(query);
 
-  const params = new URLSearchParams({
+  const params = buildUrlSearchParams({
     word: query.word,
     sort: "date_desc",
     search_target: "partial_match_for_tags",
     filter: "for_android",
   });
 
-  appendEnum(params, "sort", query.sort, VALID_SORT_VALUES);
-  appendEnum(params, "search_target", query.search_target, VALID_SEARCH_TARGET_VALUES);
-  appendEnum(params, "search_ai_type", query.search_ai_type, VALID_SEARCH_AI_TYPE_VALUES);
+  for (const field of NOVEL_SEARCH_FILTER_FIELDS.enum) {
+    appendEnum(params, field, query[field], ENUM_FILTER_VALUES[field]);
+  }
 
-  appendDate(params, "start_date", query.start_date);
-  appendDate(params, "end_date", query.end_date);
-  appendPositiveInteger(params, "bookmark_num_min", query.bookmark_num_min ?? query.bookmark_num, MAX_BOOKMARK_NUM);
-  appendPositiveInteger(params, "bookmark_num_max", query.bookmark_num_max, MAX_BOOKMARK_NUM);
-  appendPositiveInteger(params, "text_length_min", query.text_length_min, MAX_TEXT_LENGTH);
-  appendEnum(params, "lang", query.lang, VALID_LANG_VALUES);
+  for (const field of NOVEL_SEARCH_FILTER_FIELDS.date) {
+    appendDate(params, field, query[field]);
+  }
 
-  appendBoolean(
-    params,
-    "include_potential_violation_works",
-    query.include_potential_violation_works,
-  );
-  appendBoolean(params, "include_translated_tag_results", query.include_translated_tag_results);
-  appendBoolean(params, "is_original_only", query.is_original_only);
-  appendBoolean(params, "is_replaceable_only", query.is_replaceable_only);
-  appendBoolean(params, "merge_plain_keyword_results", query.merge_plain_keyword_results);
+  for (const field of NOVEL_SEARCH_FILTER_FIELDS.positiveInteger) {
+    appendPositiveInteger(
+      params,
+      field,
+      resolvePositiveIntegerFilterValue(query, field),
+      POSITIVE_INTEGER_FILTER_LIMITS[field],
+    );
+  }
+
+  for (const field of NOVEL_SEARCH_FILTER_FIELDS.boolean) {
+    appendBoolean(params, field, query[field]);
+  }
 
   const page = parsePage(query.page);
   const offset = (page - 1) * ITEMS_PER_PAGE;
   if (offset > 0) params.set("offset", offset.toString());
 
   return params;
+}
+
+function resolvePositiveIntegerFilterValue(
+  query: NovelSearchQuery,
+  field: PositiveIntegerNovelSearchFilterField,
+) {
+  return field === "bookmark_num_min" ? query.bookmark_num_min ?? query.bookmark_num : query[field];
+}
+
+export function buildNovelSearchRequest(query: NovelSearchQuery): NovelSearchRequest {
+  return {
+    params: buildNovelSearchApiParams(query),
+    page: parsePage(query.page),
+  };
+}
+
+export function buildNovelSearchErrorResponse(error: unknown): RouteErrorResponse | null {
+  if (
+    !(error instanceof MissingNovelSearchKeywordError) &&
+    !(error instanceof InvalidSearchParameterError)
+  ) {
+    return null;
+  }
+
+  return buildRoutePublicClientErrorResponse(error.message);
 }

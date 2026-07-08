@@ -9,6 +9,8 @@ import novels from "./routes/novels.ts";
 import history from "./routes/history.ts";
 import bookmarks from "./routes/bookmarks.ts";
 import { getCorsConfig } from "./middleware/cors.ts";
+import { parseServerPort } from "./services/server_config.ts";
+import { serveStaticAsset } from "./services/static_files.ts";
 
 const app = new Hono();
 
@@ -36,51 +38,7 @@ app.route("/api/bookmarks", bookmarks);
 // Serve static files from frontend/dist
 app.get("*", async (c) => {
   const path = new URL(c.req.url).pathname;
-
-  // Skip API routes
-  if (path.startsWith("/api/")) {
-    return c.notFound();
-  }
-
-  try {
-    // Try to serve the requested file
-    let filePath = `./frontend/dist${path}`;
-
-    // If path ends with /, serve index.html
-    if (path.endsWith("/")) {
-      filePath = `./frontend/dist${path}index.html`;
-    }
-
-    // Try to read the file
-    const file = await Deno.readFile(filePath);
-
-    // Determine content type
-    const ext = filePath.split(".").pop();
-    const contentTypes: Record<string, string> = {
-      html: "text/html",
-      css: "text/css",
-      js: "application/javascript",
-      json: "application/json",
-      png: "image/png",
-      jpg: "image/jpeg",
-      svg: "image/svg+xml",
-    };
-
-    return new Response(file, {
-      status: 200,
-      headers: {
-        "Content-Type": contentTypes[ext || "html"] || "application/octet-stream",
-      },
-    });
-  } catch {
-    // If file not found, serve index.html for SPA routing
-    try {
-      const indexFile = await Deno.readFile("./frontend/dist/index.html");
-      return c.html(new TextDecoder().decode(indexFile));
-    } catch {
-      return c.notFound();
-    }
-  }
+  return await serveStaticAsset(path) ?? c.notFound();
 });
 
 // Error handling
@@ -95,7 +53,7 @@ app.onError((err, c) => {
 });
 
 // Start server
-const port = parseInt(Deno.env.get("PORT") || "8000");
+const port = parseServerPort(Deno.env.get("PORT"));
 console.log(`🚀 Server running on http://localhost:${port}`);
 
 Deno.serve({ port }, app.fetch);

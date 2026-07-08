@@ -2,14 +2,22 @@
  * Reading history API routes
  */
 import { Hono } from "hono";
-import { getCookie } from "hono/helper/cookie/index.ts";
+import { appendHistory, getHistory, getPosition, setPosition } from "../services/kv_store.ts";
 import {
-  appendHistory,
-  getHistory,
-  getPosition,
-  getSession,
-  setPosition,
-} from "../services/kv_store.ts";
+  buildHistoryListResponse,
+  buildHistoryListRouteRequest,
+  buildHistoryPositionErrorResponse,
+  buildReadingPositionResponse,
+  buildReadingPositionRouteRequest,
+  buildTimestampedHistoryPositionUpdate,
+} from "../services/history_model.ts";
+import { requireSession } from "../services/route_auth.ts";
+import {
+  buildLoggedRouteErrorResponse,
+  buildRouteErrorResponse,
+  buildSuccessResponse,
+  logRouteError,
+} from "../services/route_response.ts";
 
 const history = new Hono();
 
@@ -19,44 +27,26 @@ const history = new Hono();
  */
 history.post("/position", async (c) => {
   try {
-    const sessionId = getCookie(c, "session_id");
-    if (!sessionId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const session = await getSession(sessionId);
-    if (!session) {
-      return c.json({ error: "Invalid session" }, 401);
-    }
+    const auth = await requireSession(c);
+    if (!auth.ok) return auth.response;
 
     const body = await c.req.json();
-    const { novelId, position, title, coverUrl } = body;
-
-    if (!novelId || position === undefined) {
-      return c.json({ error: "Missing novelId or position" }, 400);
-    }
+    const update = buildTimestampedHistoryPositionUpdate({ body });
 
     // Save position
-    await setPosition(session.userId, novelId, position);
+    await setPosition(auth.session.userId, update.novelId, update.position, update.updatedAt);
 
     // Update history entry
-    if (title && coverUrl) {
-      await appendHistory(session.userId, {
-        novelId,
-        title,
-        coverUrl,
-        lastReadAt: Date.now(),
-        position,
-      });
+    if (update.historyEntry) {
+      await appendHistory(auth.session.userId, update.historyEntry);
     }
 
-    return c.json({ success: true });
+    return c.json(buildSuccessResponse());
   } catch (error) {
-    console.error("Save position error:", error);
-    return c.json({
-      error: "Failed to save position",
-      message: (error as Error).message,
-    }, 500);
+    const errorResponse = buildHistoryPositionErrorResponse(error) ??
+      buildRouteErrorResponse(error, "Failed to save position");
+    logRouteError(errorResponse, "Save position error:", error);
+    return c.json(errorResponse.body, errorResponse.status);
   }
 });
 
@@ -66,34 +56,22 @@ history.post("/position", async (c) => {
  */
 history.get("/position/:id", async (c) => {
   try {
-    const sessionId = getCookie(c, "session_id");
-    if (!sessionId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
+    const auth = await requireSession(c);
+    if (!auth.ok) return auth.response;
 
-    const session = await getSession(sessionId);
-    if (!session) {
-      return c.json({ error: "Invalid session" }, 401);
-    }
+    const positionRequest = buildReadingPositionRouteRequest({
+      novelId: c.req.param("id"),
+    });
+    const positionData = await getPosition(auth.session.userId, positionRequest.novelId);
 
-    const novelId = c.req.param("id");
-    if (!novelId) {
-      return c.json({ error: "Missing novel ID" }, 400);
-    }
-
-    const positionData = await getPosition(session.userId, parseInt(novelId));
-
-    if (!positionData) {
-      return c.json({ position: 0, updatedAt: null });
-    }
-
-    return c.json(positionData);
+    return c.json(buildReadingPositionResponse(positionData));
   } catch (error) {
-    console.error("Get position error:", error);
-    return c.json({
-      error: "Failed to get position",
-      message: (error as Error).message,
-    }, 500);
+    const errorResponse = buildLoggedRouteErrorResponse(
+      error,
+      "Failed to get position",
+      "Get position error:",
+    );
+    return c.json(errorResponse.body, errorResponse.status);
   }
 });
 
@@ -103,26 +81,22 @@ history.get("/position/:id", async (c) => {
  */
 history.get("/novels", async (c) => {
   try {
-    const sessionId = getCookie(c, "session_id");
-    if (!sessionId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
+    const auth = await requireSession(c);
+    if (!auth.ok) return auth.response;
 
-    const session = await getSession(sessionId);
-    if (!session) {
-      return c.json({ error: "Invalid session" }, 401);
-    }
+    const historyRequest = buildHistoryListRouteRequest({
+      limit: c.req.query("limit"),
+    });
+    const entries = await getHistory(auth.session.userId, historyRequest.limit);
 
-    const limit = parseInt(c.req.query("limit") || "50");
-    const entries = await getHistory(session.userId, limit);
-
-    return c.json({ history: entries });
+    return c.json(buildHistoryListResponse(entries));
   } catch (error) {
-    console.error("Get history error:", error);
-    return c.json({
-      error: "Failed to get history",
-      message: (error as Error).message,
-    }, 500);
+    const errorResponse = buildLoggedRouteErrorResponse(
+      error,
+      "Failed to get history",
+      "Get history error:",
+    );
+    return c.json(errorResponse.body, errorResponse.status);
   }
 });
 

@@ -3,6 +3,7 @@
  */
 
 import { calcClientHash } from "../utils/md5.ts";
+import { buildUrlSearchParams } from "./url_search_params.ts";
 
 const PIXIV_TOKEN_URL = "https://oauth.secure.pixiv.net/auth/token";
 const CLIENT_ID = "MOBrBDS8blbauoSck0ZfDbtuzpyT";
@@ -44,7 +45,7 @@ export async function refreshAccessToken(
   const clientTime = getIsoDate();
   const clientHash = await calcClientHash(clientTime);
 
-  const params = new URLSearchParams({
+  const params = buildUrlSearchParams({
     grant_type: "refresh_token",
     refresh_token: refreshToken,
     client_id: CLIENT_ID,

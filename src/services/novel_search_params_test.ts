@@ -1,25 +1,102 @@
 import {
+  assertJsonEquals,
+  assertStrictEquals as assertEquals,
+  assertThrowsError as assertThrows,
+} from "./test_asserts.ts";
+import * as novelSearchParamsModel from "./novel_search_params.ts";
+import {
   buildNovelSearchApiParams,
+  buildNovelSearchErrorResponse,
   buildNovelSearchPagination,
+  buildNovelSearchRequest,
+  collectNovelSearchQuery,
   InvalidSearchParameterError,
+  MissingNovelSearchKeywordError,
 } from "./novel_search_params.ts";
 
-function assertEquals(actual: unknown, expected: unknown) {
-  if (actual !== expected) {
-    throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
-  }
-}
+Deno.test("novel search filter metadata groups route and API filter fields", () => {
+  assertJsonEquals(
+    (novelSearchParamsModel as Record<string, unknown>).NOVEL_SEARCH_FILTER_FIELDS,
+    {
+      optionalQuery: [
+        "sort",
+        "search_target",
+        "start_date",
+        "end_date",
+        "bookmark_num",
+        "bookmark_num_min",
+        "bookmark_num_max",
+        "text_length_min",
+        "include_potential_violation_works",
+        "include_translated_tag_results",
+        "is_original_only",
+        "is_replaceable_only",
+        "merge_plain_keyword_results",
+        "search_ai_type",
+        "lang",
+      ],
+      enum: ["sort", "search_target", "search_ai_type", "lang"],
+      date: ["start_date", "end_date"],
+      positiveInteger: ["bookmark_num_min", "bookmark_num_max", "text_length_min"],
+      boolean: [
+        "include_potential_violation_works",
+        "include_translated_tag_results",
+        "is_original_only",
+        "is_replaceable_only",
+        "merge_plain_keyword_results",
+      ],
+    },
+  );
+});
 
-function assertThrows(fn: () => unknown, errorClass: new (...args: never[]) => Error) {
-  try {
-    fn();
-  } catch (error) {
-    if (error instanceof errorClass) return;
-    throw new Error(`Expected ${errorClass.name}, got ${(error as Error).constructor.name}`);
-  }
+Deno.test("collectNovelSearchQuery reads supported route query fields", () => {
+  const routeQuery = new Map([
+    ["word", "五悠"],
+    ["sort", "popular_desc"],
+    ["search_target", "keyword"],
+    ["start_date", "2025-04-26"],
+    ["end_date", "2026-04-26"],
+    ["bookmark_num", "100"],
+    ["bookmark_num_min", "1000"],
+    ["bookmark_num_max", "4999"],
+    ["text_length_min", "3000"],
+    ["include_potential_violation_works", "false"],
+    ["include_translated_tag_results", "true"],
+    ["is_original_only", "false"],
+    ["is_replaceable_only", "false"],
+    ["merge_plain_keyword_results", "true"],
+    ["search_ai_type", "1"],
+    ["lang", "ja"],
+    ["page", "2"],
+  ]);
 
-  throw new Error(`Expected ${errorClass.name} to be thrown`);
-}
+  assertJsonEquals(collectNovelSearchQuery((name) => routeQuery.get(name)), {
+    word: "五悠",
+    sort: "popular_desc",
+    search_target: "keyword",
+    start_date: "2025-04-26",
+    end_date: "2026-04-26",
+    bookmark_num: "100",
+    bookmark_num_min: "1000",
+    bookmark_num_max: "4999",
+    text_length_min: "3000",
+    include_potential_violation_works: "false",
+    include_translated_tag_results: "true",
+    is_original_only: "false",
+    is_replaceable_only: "false",
+    merge_plain_keyword_results: "true",
+    search_ai_type: "1",
+    lang: "ja",
+    page: "2",
+  });
+});
+
+Deno.test("collectNovelSearchQuery preserves existing route defaults for missing word and page", () => {
+  assertJsonEquals(collectNovelSearchQuery(() => undefined), {
+    word: "",
+    page: "1",
+  });
+});
 
 Deno.test("buildNovelSearchApiParams forwards verified App API search filters", () => {
   const params = buildNovelSearchApiParams({
@@ -68,6 +145,28 @@ Deno.test("buildNovelSearchApiParams keeps legacy bookmark_num as bookmark_num_m
 
   assertEquals(params.get("bookmark_num_min"), "100");
   assertEquals(params.has("offset"), false);
+});
+
+Deno.test("buildNovelSearchRequest returns Pixiv params with the parsed route page", () => {
+  const request = buildNovelSearchRequest({
+    word: "五悠",
+    sort: "popular_desc",
+    page: "3",
+  });
+
+  assertEquals(request.page, 3);
+  assertEquals(request.params.get("word"), "五悠");
+  assertEquals(request.params.get("sort"), "popular_desc");
+  assertEquals(request.params.get("offset"), "60");
+});
+
+Deno.test("buildNovelSearchRequest keeps default page behavior with omitted page", () => {
+  const request = buildNovelSearchRequest({
+    word: "五悠",
+  });
+
+  assertEquals(request.page, 1);
+  assertEquals(request.params.has("offset"), false);
 });
 
 Deno.test("buildNovelSearchApiParams rejects unsupported search enum values", () => {
@@ -243,6 +342,20 @@ Deno.test("InvalidSearchParameterError does not expose rejected values", () => {
   const error = new InvalidSearchParameterError("word");
 
   assertEquals(error.message, "Invalid word");
+});
+
+Deno.test("buildNovelSearchErrorResponse maps public search validation failures", () => {
+  assertJsonEquals(buildNovelSearchErrorResponse(new MissingNovelSearchKeywordError()), {
+    body: { error: "Missing search keyword" },
+    status: 400,
+    shouldLog: false,
+  });
+  assertJsonEquals(buildNovelSearchErrorResponse(new InvalidSearchParameterError("page")), {
+    body: { error: "Invalid page" },
+    status: 400,
+    shouldLog: false,
+  });
+  assertEquals(buildNovelSearchErrorResponse(new Error("boom")), null);
 });
 
 Deno.test("buildNovelSearchPagination caps estimated pages to supported page maximum", () => {
