@@ -1,5 +1,6 @@
 import FilterPanel from '../components/search/FilterPanel'
 import SortControls from '../components/search/SortControls'
+import SearchKeywordRulesControl from '../components/search/SearchKeywordRulesControl'
 import type { SearchFilterState, SearchSort } from './searchPageModel'
 
 type SearchFilterChangeHandler = <K extends keyof SearchFilterState>(
@@ -23,7 +24,8 @@ export default function SearchFilterToolbar({
   onSortChange,
 }: SearchFilterToolbarProps) {
   return (
-    <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+    <div className="flex flex-wrap items-center gap-2 md:justify-between">
+      <SortControls value={sort} onChange={onSortChange} />
       <FilterPanel
         searchTarget={filters.searchTarget}
         startDate={filters.startDate || ''}
@@ -55,7 +57,7 @@ export default function SearchFilterToolbar({
         onSearchAiTypeChange={(value) => onFilterChange('searchAiType', value)}
         onApply={onApplyFilters}
       />
-      <SortControls value={sort} onChange={onSortChange} />
+      <SearchKeywordRulesControl />
     </div>
   )
 }

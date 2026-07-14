@@ -1,8 +1,6 @@
-import { act } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  clickElement,
   getAnchorByHref,
   getButtonByLabel,
   renderReactElement,
@@ -100,19 +98,15 @@ describe('Header', () => {
     document.body.innerHTML = ''
   })
 
-  it('renders the compact Japanese rules chip on the search route with the full aria-label preserved', () => {
+  it('keeps route navigation in the header without duplicating search keyword rules', () => {
     const rendered = renderHeader('/search')
     const { container } = rendered
 
     const searchLink = getAnchorByHref(container, '/search')
     const historyLink = getAnchorByHref(container, '/history')
-    const rulesButton = getButtonByLabel(container, 'キーワードルール')
-
     expect(searchLink.getAttribute('aria-current')).toBe('page')
     expect(historyLink.hasAttribute('aria-current')).toBe(false)
-    expect(rulesButton.textContent?.replace(/\s+/g, '')).toBe('ルール2')
-    expect(rulesButton.title).toBe('キーワードルール')
-    expect(container.textContent).not.toContain('キーワードルール')
+    expect(container.querySelector('button[aria-label="キーワードルール"]')).toBeNull()
 
     unmount(rendered)
   })
@@ -131,29 +125,11 @@ describe('Header', () => {
     unmount(rendered)
   })
 
-  it('wires the rules button accessibility state and closes the panel on Escape', () => {
+  it('keeps the locale control available on the search route', () => {
     const rendered = renderHeader('/search')
     const { container } = rendered
 
-    const rulesButton = getButtonByLabel(container, 'キーワードルール')
-
-    expect(rulesButton.getAttribute('aria-controls')).toBe('header-keyword-rules-panel')
-    expect(rulesButton.getAttribute('aria-expanded')).toBe('false')
-    expect(container.querySelector('#header-keyword-rules-panel')).toBeNull()
-
-    clickElement(rulesButton)
-
-    expect(rulesButton.getAttribute('aria-expanded')).toBe('true')
-    expect(container.querySelector('#header-keyword-rules-panel')).not.toBeNull()
-    expect(container.textContent).toContain('除外キーワード')
-    expect(container.textContent).toContain('ハイライトキーワード')
-
-    act(() => {
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
-    })
-
-    expect(rulesButton.getAttribute('aria-expanded')).toBe('false')
-    expect(container.querySelector('#header-keyword-rules-panel')).toBeNull()
+    expect(getButtonByLabel(container, '言語を切り替え')).toBeInstanceOf(HTMLButtonElement)
 
     unmount(rendered)
   })
