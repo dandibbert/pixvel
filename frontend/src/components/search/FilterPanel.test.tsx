@@ -12,6 +12,22 @@ const translations: Record<string, string> = {
   'filter.title': '筛选器',
   'filter.searchMode': '搜索范围',
   'filter.publishDateRange': '发布时间范围',
+  'filter.bookmarkRange': '书签数',
+  'filter.datePreset.anytime': '不限',
+  'filter.datePreset.last7Days': '近 7 天',
+  'filter.datePreset.last30Days': '近 30 天',
+  'filter.datePreset.last180Days': '近半年',
+  'filter.datePreset.last365Days': '近一年',
+  'filter.bookmarkPreset.0': '不限',
+  'filter.bookmarkPreset.100': '100+',
+  'filter.bookmarkPreset.500': '500+',
+  'filter.bookmarkPreset.1000': '1,000+',
+  'filter.bookmarkPreset.5000': '5,000+',
+  'filter.bookmarkPreset.10000': '10,000+',
+  'filter.dateInputHint': '点按键盘输入',
+  'filter.bookmarkInputHint': '点按键盘输入',
+  'filter.openStartDateCalendar': '打开开始日期日历',
+  'filter.openEndDateCalendar': '打开结束日期日历',
   'filter.noLimit': '不限制',
   'filter.bookmarkMin': '收藏下限',
   'filter.bookmarkMax': '收藏上限',
@@ -31,6 +47,7 @@ const translations: Record<string, string> = {
   'filter.dateStart': '开始日期',
   'filter.dateEnd': '结束日期',
   'filter.dateRangeInvalid': '开始日期不能晚于结束日期',
+  'filter.dateFormatInvalid': '请输入有效日期',
   'filter.bookmarkRangeInvalid': '收藏下限不能高于收藏上限',
   'search.target.partial_match_for_tags': '标签(部分)',
   'search.target.exact_match_for_tags': '标签(完全)',
@@ -99,7 +116,7 @@ describe('FilterPanel', () => {
 
     expect(container.querySelector('[role="dialog"]')?.getAttribute('aria-label')).toBe('筛选器')
     expect(container.textContent).toContain('关键词')
-    expect(container.textContent).toContain('不限制')
+    expect(container.textContent).toContain('不限')
     expect(container.textContent).toContain('排除 AI 作品')
 
     const overlay = getElementBySelector(container, '[data-testid="filter-overlay"]', HTMLElement, 'Filter overlay')
@@ -146,6 +163,20 @@ describe('FilterPanel', () => {
 
     expect(container.textContent).toContain('开始日期不能晚于结束日期')
     expect(container.textContent).toContain('收藏下限不能高于收藏上限')
+    expect(onApply).not.toHaveBeenCalled()
+
+    unmount()
+  })
+
+  it('shows a direct date format error for an impossible date', () => {
+    const { container, unmount, onApply } = renderFilterPanel({
+      startDate: '2026-02-30',
+    })
+
+    clickButtonContainingText(container, '筛选器')
+    clickButtonContainingText(container, '应用筛选')
+
+    expect(container.textContent).toContain('请输入有效日期')
     expect(onApply).not.toHaveBeenCalled()
 
     unmount()

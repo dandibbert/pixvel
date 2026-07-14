@@ -6,6 +6,12 @@ import {
   type SearchTarget,
 } from '../../utils/searchFilters'
 import { pickProperties } from '../../utils/object'
+import {
+  isValidIsoDate,
+  parseNumberInput,
+} from './filterRangeModel'
+
+export { parseNumberInput } from './filterRangeModel'
 
 export type {
   SearchAiType,
@@ -32,7 +38,10 @@ export interface FilterPanelValueChangeHandlers {
   onSearchAiTypeChange: (value: SearchAiType) => void
 }
 
-export type FilterValidationError = 'dateRangeInvalid' | 'bookmarkRangeInvalid'
+export type FilterValidationError =
+  | 'dateFormatInvalid'
+  | 'dateRangeInvalid'
+  | 'bookmarkRangeInvalid'
 
 type FilterPanelValueKey = keyof FilterPanelValues
 type FilterPanelValueChangeHandlerKey = keyof FilterPanelValueChangeHandlers
@@ -93,10 +102,6 @@ export function buildSearchTargetOptions({
 }
 
 export const DEFAULT_FILTER_PANEL_VALUES = DEFAULT_SEARCH_FILTER_VALUES
-
-export function parseNumberInput(value: string) {
-  return Number(value) || 0
-}
 
 export function buildBookmarkMinimumUpdate(value: string) {
   const parsedValue = parseNumberInput(value)
@@ -165,8 +170,13 @@ export function applyFilterPanelValues(
 
 export function validateSearchFilters(values: FilterPanelValues): FilterValidationError[] {
   const validationErrors: FilterValidationError[] = []
+  const hasInvalidDate = [values.startDate, values.endDate].some(
+    (value) => Boolean(value) && !isValidIsoDate(value),
+  )
 
-  if (values.startDate && values.endDate && values.startDate > values.endDate) {
+  if (hasInvalidDate) {
+    validationErrors.push('dateFormatInvalid')
+  } else if (values.startDate && values.endDate && values.startDate > values.endDate) {
     validationErrors.push('dateRangeInvalid')
   }
 

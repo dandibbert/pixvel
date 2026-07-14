@@ -39,7 +39,7 @@ export default function NovelCard({
 
   return (
     <div
-      className="relative w-full text-left bg-white border border-border/50 rounded-xl overflow-hidden transition-all duration-200 touch-manipulation group flex flex-col h-full hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
+      className="relative w-full text-left bg-white border border-border/50 rounded-xl overflow-hidden transition-all duration-200 touch-manipulation group flex flex-col md:h-full hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
     >
       <button
         type="button"
@@ -49,36 +49,39 @@ export default function NovelCard({
         className="absolute inset-0 z-[1] rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
       />
       <div
-        className={`relative z-[2] p-3 md:p-4 flex flex-col gap-2 md:gap-3 h-full pointer-events-none ${isBlockedForDisplay ? 'blur-[2px]' : ''}`}
+        data-testid="novel-card-content"
+        className={`relative z-[2] p-3 md:p-4 flex flex-col gap-1.5 md:gap-3 md:h-full pointer-events-none ${isBlockedForDisplay ? 'blur-[2px]' : ''}`}
       >
         <div className="flex-shrink-0 space-y-1.5 md:space-y-2">
-          <div className="h-[20px] md:h-[24px] flex items-center justify-between gap-2">
-            {series ? (
-              <button
-                type="button"
-                className="relative z-[4] pointer-events-auto max-w-full text-[9px] md:text-[10px] font-bold uppercase tracking-wider text-white bg-primary/90 px-2 py-0.5 md:py-1 rounded shadow-sm truncate hover:bg-primary transition-all"
-                title={`${seriesPrefix}: ${series.title}`}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (isBlockedForDisplay) return
-                  navigate(buildSeriesPath(series.id))
-                }}
-              >
-                {seriesPrefix}: {renderHighlightedText(series.title)}
-              </button>
-            ) : (
-              <span />
-            )}
+          {(series || showModalOnlyBadge) && (
+            <div className="h-[20px] md:h-[24px] flex items-center justify-between gap-2">
+              {series ? (
+                <button
+                  type="button"
+                  className="relative z-[4] pointer-events-auto max-w-full text-[9px] md:text-[10px] font-bold uppercase tracking-wider text-white bg-primary/90 px-2 py-0.5 md:py-1 rounded shadow-sm truncate hover:bg-primary transition-all"
+                  title={`${seriesPrefix}: ${series.title}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (isBlockedForDisplay) return
+                    navigate(buildSeriesPath(series.id))
+                  }}
+                >
+                  {seriesPrefix}: {renderHighlightedText(series.title)}
+                </button>
+              ) : (
+                <span />
+              )}
 
-            {showModalOnlyBadge && (
-              <span
-                className="relative z-[3] px-1.5 py-0.5 text-[9px] md:text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 border border-primary/20 rounded"
-                title={t('search.keywordRules.modalOnlyHighlight')}
-              >
-                {t('search.keywordRules.badge')}
-              </span>
-            )}
-          </div>
+              {showModalOnlyBadge && (
+                <span
+                  className="relative z-[3] px-1.5 py-0.5 text-[9px] md:text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 border border-primary/20 rounded"
+                  title={t('search.keywordRules.modalOnlyHighlight')}
+                >
+                  {t('search.keywordRules.badge')}
+                </span>
+              )}
+            </div>
+          )}
           <h3 className="text-sm md:text-lg font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-[1.3] tracking-tight overflow-hidden">
             {renderHighlightedText(novel.title)}
           </h3>
@@ -99,7 +102,10 @@ export default function NovelCard({
 
         <NovelCardTags tags={novel.tags} renderText={renderHighlightedText} />
 
-        <p className="text-xs text-foreground/50 line-clamp-2 leading-relaxed flex-shrink-0 h-[2.4rem]">
+        <p
+          data-testid="novel-card-description"
+          className="mb-0 text-xs text-foreground/50 line-clamp-2 leading-relaxed flex-shrink-0 md:h-[2.4rem]"
+        >
           {renderHighlightedText(plainDescription || t('novel.emptyDescription'))}
         </p>
 

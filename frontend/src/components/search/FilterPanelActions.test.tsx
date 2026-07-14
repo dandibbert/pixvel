@@ -21,6 +21,9 @@ describe('FilterPanelActions', () => {
 
     expect(onReset).toHaveBeenCalledTimes(1)
     expect(onApply).toHaveBeenCalledTimes(1)
+    expect(container.firstElementChild?.className).toContain('sticky')
+    expect(container.firstElementChild?.className).toContain('bottom-0')
+    expect(container.firstElementChild?.className).toContain('safe-area-inset-bottom')
 
     rendered.unmount()
   })

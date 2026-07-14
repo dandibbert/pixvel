@@ -64,6 +64,7 @@ beforeEach(() => {
     totalPages: 1,
     limit: 20,
     hasMore: false,
+    visibleResultCount: 0,
     isLoading: false,
     error: null,
     searchHistory: [],
@@ -224,9 +225,27 @@ test('clearResults resets backend pagination state', () => {
     page: 99,
     totalPages: 100,
     hasMore: true,
+    visibleResultCount: 10,
   })
 
   useSearchStore.getState().clearResults()
 
   expect(useSearchStore.getState().totalPages).toBe(1)
+  expect(useSearchStore.getState().visibleResultCount).toBe(0)
+})
+
+test('showMoreResults reveals the current backend page ten novels at a time', () => {
+  useSearchStore.setState({
+    results: Array.from({ length: 23 }, (_, index) => createNovel(String(index + 1))),
+    visibleResultCount: 10,
+  })
+
+  useSearchStore.getState().showMoreResults()
+  expect(useSearchStore.getState().visibleResultCount).toBe(20)
+
+  useSearchStore.getState().showMoreResults()
+  expect(useSearchStore.getState().visibleResultCount).toBe(23)
+
+  useSearchStore.getState().showMoreResults()
+  expect(useSearchStore.getState().visibleResultCount).toBe(23)
 })

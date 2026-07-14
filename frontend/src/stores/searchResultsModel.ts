@@ -14,6 +14,7 @@ export type SearchResultsState = {
   page: number
   totalPages: number
   hasMore: boolean
+  visibleResultCount: number
   isLoading: false
 }
 
@@ -23,6 +24,18 @@ export type SearchResultsWithFiltersState = SearchResultsState & {
 
 export type ClearedSearchResultsState = Omit<SearchResultsState, 'isLoading'>
 
+export const SEARCH_RESULT_BATCH_SIZE = 10
+
+export function buildNextVisibleResultCount({
+  current,
+  total,
+}: {
+  current: number
+  total: number
+}) {
+  return Math.min(current + SEARCH_RESULT_BATCH_SIZE, total)
+}
+
 export function buildSearchResultsState({
   result,
   existingResults = [],
@@ -30,12 +43,18 @@ export function buildSearchResultsState({
   result: SearchApiResult
   existingResults?: Novel[]
 }): SearchResultsState {
+  const results = [...existingResults, ...result.novels]
+  const visibleResultCount = existingResults.length > 0
+    ? Math.min(existingResults.length + SEARCH_RESULT_BATCH_SIZE, results.length)
+    : Math.min(SEARCH_RESULT_BATCH_SIZE, results.length)
+
   return {
-    results: [...existingResults, ...result.novels],
+    results,
     total: result.total,
     page: result.page,
     totalPages: result.totalPages,
     hasMore: result.page < result.totalPages,
+    visibleResultCount,
     isLoading: false,
   }
 }
@@ -60,5 +79,6 @@ export function buildClearedSearchResultsState(): ClearedSearchResultsState {
     page: 1,
     totalPages: 1,
     hasMore: false,
+    visibleResultCount: 0,
   }
 }

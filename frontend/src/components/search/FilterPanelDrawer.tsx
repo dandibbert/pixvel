@@ -20,7 +20,7 @@ export default function FilterPanelDrawer({
   return (
     <div
       data-testid="filter-overlay"
-      className="fixed inset-0 z-30 bg-black/35 backdrop-blur-[2px] flex items-end overflow-y-auto overscroll-contain p-2 md:items-start md:justify-end md:p-8"
+      className="fixed inset-0 z-[60] bg-black/35 backdrop-blur-[2px] flex items-end overflow-y-auto overscroll-contain p-2 md:items-start md:justify-end md:p-8"
       onClick={closeOnOverlayClick}
     >
       <div

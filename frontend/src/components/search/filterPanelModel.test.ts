@@ -76,8 +76,9 @@ describe('filterPanelModel', () => {
   it('parses number inputs with the same empty and invalid fallback as the component', () => {
     expect(parseNumberInput('')).toBe(0)
     expect(parseNumberInput('abc')).toBe(0)
+    expect(parseNumberInput('1,000')).toBe(1000)
     expect(parseNumberInput('2500')).toBe(2500)
-    expect(parseNumberInput('-5')).toBe(-5)
+    expect(parseNumberInput('-5')).toBe(5)
   })
 
   it('builds synchronized bookmark minimum updates for legacy and range filters', () => {
@@ -123,6 +124,16 @@ describe('filterPanelModel', () => {
         bookmarkNumMax: 1000,
       }),
     ).toEqual(['dateRangeInvalid', 'bookmarkRangeInvalid'])
+  })
+
+  it('rejects incomplete and impossible direct date input before range validation', () => {
+    expect(
+      validateSearchFilters({
+        ...DEFAULT_FILTER_PANEL_VALUES,
+        startDate: '2026-02-30',
+        endDate: '2026-07-1',
+      }),
+    ).toEqual(['dateFormatInvalid'])
   })
 
   it('uses legacy bookmarkNum as the bookmark minimum when validating ranges', () => {
