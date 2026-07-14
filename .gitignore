@@ -37,4 +37,5 @@ yarn-error.log*
 deno_dir/
 
 # Local docs drafts
-docs/plans/
+docs/
+mockups/
