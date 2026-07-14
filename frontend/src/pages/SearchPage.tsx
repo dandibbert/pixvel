@@ -43,6 +43,7 @@ export default function SearchPage() {
     results,
     total,
     totalPages,
+    visibleResultCount,
     isLoading,
     error,
     searchHistory,
@@ -54,6 +55,7 @@ export default function SearchPage() {
     clearError,
     removeFromHistory,
     clearHistory,
+    showMoreResults,
   } = useSearchStore()
   const { blockedWords, highlightWords, revealedBlockedIds, revealBlockedId } =
     useSearchKeywordRules()
@@ -186,7 +188,10 @@ export default function SearchPage() {
       <SearchPageHero title={t('search.title')} subtitle={t('search.subtitle')} />
 
       <div className="max-w-7xl mx-auto px-4 pb-20">
-        <div className="bg-white rounded-2xl p-4 md:p-8 border border-border/50 shadow-xl shadow-black/5">
+        <div
+          data-testid="search-content-card"
+          className="bg-transparent md:bg-white rounded-none md:rounded-2xl p-0 md:p-8 border-0 md:border md:border-border/50 shadow-none md:shadow-xl md:shadow-black/5"
+        >
           <div className="mb-6 md:mb-10 space-y-4 md:space-y-6">
             <SearchQueryPanel
               query={query}
@@ -219,11 +224,13 @@ export default function SearchPage() {
             total={total}
             totalPages={totalPages}
             currentPage={urlState.page}
+            visibleResultCount={visibleResultCount}
             hasSearchQuery={Boolean(urlState.q)}
             keywordMatchMap={displayKeywordMatchMap}
             onNovelClick={novelPreview.openPreview}
             onRevealBlocked={handleRevealBlocked}
             onPageChange={handlePageChange}
+            onShowMoreResults={showMoreResults}
           />
         </div>
       </div>

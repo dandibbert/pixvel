@@ -53,6 +53,10 @@ vi.mock('../components/search/SortControls', () => ({
   },
 }))
 
+vi.mock('../components/search/SearchKeywordRulesControl', () => ({
+  default: () => <div data-testid="search-keyword-rules-control">keyword rules</div>,
+}))
+
 const { default: SearchFilterToolbar } = await import('./SearchFilterToolbar')
 
 function renderSearchFilterToolbar(element: React.ReactElement) {
@@ -103,6 +107,9 @@ describe('SearchFilterToolbar', () => {
       searchAiType: '0',
     })
     expect(mockSortControlsProps[0].value).toBe('date_asc')
+    expect(container.querySelector('[data-testid="search-keyword-rules-control"]')).toBeInstanceOf(HTMLElement)
+    expect(container.firstElementChild?.className).toContain('flex-wrap')
+    expect(container.firstElementChild?.className).not.toContain('flex-col')
 
     clickButtonByText(container, 'apply filter panel')
     clickButtonByText(container, 'change sort')

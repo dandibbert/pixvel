@@ -10,7 +10,7 @@ export default function NovelCardTags({ tags, renderText }: NovelCardTagsProps) 
   const hiddenTagCount = tags.length - visibleTags.length
 
   return (
-    <div className="flex flex-wrap gap-1 md:gap-1.5 h-[2.5rem] md:h-[3rem] flex-shrink-0 content-start overflow-hidden">
+    <div className="flex flex-wrap gap-1 md:gap-1.5 min-h-[1.5rem] md:h-[3rem] flex-shrink-0 content-start overflow-hidden">
       {visibleTags.map((tag, index) => (
         <span
           key={`${tag}-${index}`}

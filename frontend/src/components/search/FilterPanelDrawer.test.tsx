@@ -22,6 +22,7 @@ describe('FilterPanelDrawer', () => {
 
     expect(dialog.getAttribute('aria-modal')).toBe('true')
     expect(dialog.getAttribute('aria-label')).toBe('筛选器')
+    expect(overlay.className).toContain('z-[60]')
     expect(overlay.className).toContain('overflow-y-auto')
     expect(overlay.className).toContain('overscroll-contain')
     expect(dialog.className).toContain('max-h-[calc(100dvh-1rem)]')

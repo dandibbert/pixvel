@@ -89,6 +89,7 @@ function createStaticResponse(file: Uint8Array<ArrayBuffer>, contentType: string
     status: 200,
     headers: {
       "Content-Type": contentType,
+      ...(contentType === "text/html" ? { "Cache-Control": "no-cache" } : {}),
     },
   });
 }

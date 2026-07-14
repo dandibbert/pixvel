@@ -10,7 +10,10 @@ describe('SearchPageHero', () => {
 
     expect(container.querySelector('h1')?.textContent).toBe('搜索小说')
     expect(container.textContent).toContain('查找 Pixiv 小说')
-    expect(container.firstElementChild?.className).toContain('bg-primary')
+    expect(container.firstElementChild?.className).toContain('bg-white')
+    expect(container.firstElementChild?.className).toContain('md:bg-primary')
+    expect(container.querySelector('h1')?.className).toContain('text-foreground')
+    expect(container.querySelector('h1')?.className).toContain('md:text-white')
 
     unmount()
   })

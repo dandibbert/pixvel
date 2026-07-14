@@ -85,6 +85,17 @@ Deno.test("serveStaticAsset falls back to SPA index when an app route is not a f
   assertEquals(await readText(response), "<html>app</html>");
 });
 
+Deno.test("serveStaticAsset requires browsers to revalidate HTML", async () => {
+  const response = await serveStaticAsset("/", {
+    rootDir: "./frontend/dist",
+    readFile: () => Promise.resolve(new TextEncoder().encode("<html>fresh app</html>")),
+  });
+
+  if (!response) throw new Error("Expected static HTML response");
+
+  assertEquals(response.headers.get("Cache-Control"), "no-cache");
+});
+
 Deno.test("serveStaticAsset returns null for API or unsafe paths", async () => {
   const readFile = () => {
     throw new Error("readFile should not be called");

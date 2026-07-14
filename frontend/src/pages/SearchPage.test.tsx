@@ -69,6 +69,7 @@ function resetSearchStore() {
     totalPages: 1,
     limit: 20,
     hasMore: false,
+    visibleResultCount: 0,
     isLoading: false,
     error: null,
     searchHistory: [],
@@ -112,12 +113,58 @@ describe('SearchPage', () => {
       page: 1,
       totalPages: 2,
       hasMore: true,
+      visibleResultCount: 1,
     })
 
     const { container, unmount } = renderSearchPage('/search?q=五悠&page=1&sort=date_desc&target=keyword')
 
     expect(container.textContent).toContain('/ 2')
     expect(container.textContent).not.toContain('/ 3')
+
+    unmount()
+  })
+
+  it('reveals cached backend-page results through the persisted ten-item action', () => {
+    const results = Array.from({ length: 12 }, (_, index) => createNovel(String(index + 1)))
+
+    useSearchStore.setState({
+      query: '五悠',
+      filters: {
+        page: 1,
+        limit: 20,
+        sort: 'date_desc',
+        searchTarget: 'keyword',
+      },
+      results,
+      total: 12,
+      page: 1,
+      totalPages: 1,
+      hasMore: false,
+      visibleResultCount: 10,
+    })
+
+    const { container, unmount } = renderSearchPage('/search?q=五悠&page=1&sort=date_desc&target=keyword')
+
+    expect(container.textContent).not.toContain('Novel 11')
+    clickButtonContainingText(container, '继续加载 2 篇')
+    expect(container.textContent).toContain('Novel 11')
+
+    unmount()
+  })
+
+  it('uses a transparent content-first card on mobile and restores the desktop card at md', () => {
+    const { container, unmount } = renderSearchPage()
+    const contentCard = getElementBySelector(
+      container,
+      '[data-testid="search-content-card"]',
+      HTMLElement,
+      'Search content card',
+    )
+
+    expect(contentCard.className).toContain('bg-transparent')
+    expect(contentCard.className).toContain('md:bg-white')
+    expect(contentCard.className).toContain('shadow-none')
+    expect(contentCard.className).toContain('md:shadow-xl')
 
     unmount()
   })
@@ -201,12 +248,26 @@ describe('SearchPage', () => {
     const dialog = getElementBySelector(container, '[role="dialog"]', HTMLElement, 'Filter dialog')
 
     const dateInputs = getElementsBySelector(dialog, 'input[type="date"]', HTMLInputElement, 'Date inputs')
+    const directDateInputs = getElementsBySelector(
+      dialog,
+      'input[data-direct-date-input]',
+      HTMLInputElement,
+      'Direct date inputs',
+    )
+    const bookmarkInputs = getElementsBySelector(
+      dialog,
+      'input[data-bookmark-input]',
+      HTMLInputElement,
+      'Bookmark inputs',
+    )
     const numberInputs = getElementsBySelector(dialog, 'input[type="number"]', HTMLInputElement, 'Number inputs')
     const languageSelect = getElementBySelector(dialog, 'select', HTMLSelectElement, 'Language select')
     const switches = getElementsBySelector(dialog, 'input[type="checkbox"]', HTMLInputElement, 'Switch inputs')
 
     expect(dateInputs.map((input) => input.value)).toEqual(['2025-04-26', '2026-04-26'])
-    expect(numberInputs.map((input) => input.value)).toEqual(['1000', '4999', '3000'])
+    expect(directDateInputs.map((input) => input.value)).toEqual(['2025/04/26', '2026/04/26'])
+    expect(bookmarkInputs.map((input) => input.value)).toEqual(['1000', '4999'])
+    expect(numberInputs.map((input) => input.value)).toEqual(['3000'])
     expect(languageSelect.value).toBe('zh-CN')
     expect(switches.map((input) => input.checked)).toEqual([true, false, true, false, false, true])
 
