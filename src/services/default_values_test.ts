@@ -1,7 +1,4 @@
-import {
-  assertJsonEquals as assertEquals,
-  assertStrictEquals,
-} from "./test_asserts.ts";
+import { assertJsonEquals as assertEquals, assertStrictEquals } from "./test_asserts.ts";
 import {
   arrayOrEmpty,
   firstNonEmptyString,

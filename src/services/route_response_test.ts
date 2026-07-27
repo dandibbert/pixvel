@@ -1,6 +1,7 @@
 import { assertExactJsonEquals as assertEquals } from "./test_asserts.ts";
 import {
   buildCaughtRouteErrorBody,
+  buildLoggedRouteErrorResponse,
   buildRouteErrorBody,
   buildRouteErrorResponse,
   buildRouteParameterErrorBody,
@@ -9,7 +10,6 @@ import {
   buildRoutePublicErrorResponse,
   buildRouteStatusErrorResponse,
   buildSuccessResponse,
-  buildLoggedRouteErrorResponse,
   logRouteError,
 } from "./route_response.ts";
 import { InvalidRouteParameterError, MissingRouteParameterError } from "./route_params.ts";

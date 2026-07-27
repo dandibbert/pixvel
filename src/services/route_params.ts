@@ -1,7 +1,4 @@
-import {
-  buildUrlSearchParams,
-  type UrlSearchParamValue,
-} from "./url_search_params.ts";
+import { buildUrlSearchParams, type UrlSearchParamValue } from "./url_search_params.ts";
 
 export class InvalidRouteParameterError extends Error {
   constructor(parameter: string) {

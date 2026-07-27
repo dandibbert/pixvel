@@ -1,8 +1,4 @@
-import {
-  mapArrayOrEmpty,
-  numberOrZero,
-  stringOrEmpty,
-} from "./default_values.ts";
+import { mapArrayOrEmpty, numberOrZero, stringOrEmpty } from "./default_values.ts";
 
 export interface PixivNovelSummaryPayload {
   id?: number;

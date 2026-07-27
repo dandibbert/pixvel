@@ -1,4 +1,7 @@
-import { type PixivNovelSummaryPayload, transformPixivNovelSummaries } from "./novel_transformer.ts";
+import {
+  type PixivNovelSummaryPayload,
+  transformPixivNovelSummaries,
+} from "./novel_transformer.ts";
 import { buildNovelSearchPagination } from "./novel_search_params.ts";
 
 export function buildNovelSearchResponse({

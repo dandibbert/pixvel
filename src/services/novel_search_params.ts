@@ -1,7 +1,4 @@
-import {
-  buildRoutePublicClientErrorResponse,
-  type RouteErrorResponse,
-} from "./route_response.ts";
+import { buildRoutePublicClientErrorResponse, type RouteErrorResponse } from "./route_response.ts";
 import { buildUrlSearchParams } from "./url_search_params.ts";
 
 export class InvalidSearchParameterError extends Error {
