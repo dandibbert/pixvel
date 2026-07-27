@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import NovelPreviewModal from '../components/novel/NovelPreviewModal'
 import { Novel } from '../types/novel'
@@ -32,8 +32,15 @@ export default function AuthorPage() {
   const { id } = useParams()
   const novelPreview = useNovelPreview<Novel>()
 
+  // Latest-ref for t: fetch callbacks must stay referentially stable across
+  // locale switches, or the paged-resource effect refetches the whole list.
+  const tRef = useRef(t)
+  useEffect(() => {
+    tRef.current = t
+  }, [t])
+
   const fetchAuthorPage = useCallback(async (page: number): Promise<PagedNovelResponse<AuthorResponse['author']>> => {
-    if (!id) throw new Error(t('author.loadErrorFallback'))
+    if (!id) throw new Error(tRef.current('author.loadErrorFallback'))
 
     const response = await api.get<AuthorResponse>(`/novels/user/${id}`, {
       page,
@@ -46,11 +53,11 @@ export default function AuthorPage() {
       nextPage: response.nextPage,
       hasMore: response.hasMore,
     })
-  }, [id, t])
+  }, [id])
 
   const getAuthorLoadErrorMessage = useCallback((error: unknown) => {
-    return buildPagedCollectionLoadErrorMessage(error, t('author.loadErrorFallback'))
-  }, [t])
+    return buildPagedCollectionLoadErrorMessage(error, tRef.current('author.loadErrorFallback'))
+  }, [])
 
   const {
     resource: author,

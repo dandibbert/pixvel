@@ -1,4 +1,6 @@
+import { act, createElement, useState } from 'react'
 import { describe, expect, it } from 'vitest'
+import { renderReactElement } from '../test/domTestUtils'
 import {
   buildPagedNovelErrorState,
   buildPagedNovelLoadMoreState,
@@ -6,6 +8,7 @@ import {
   createEmptyPagedNovelState,
   getNextPagedNovelPage,
   mergePagedNovelResponse,
+  usePagedNovelResource,
   type PagedNovelResponse,
 } from './usePagedNovelResource'
 import type { Novel } from '../types/novel'
@@ -143,5 +146,67 @@ describe('paged novel resource model', () => {
       ...readyState,
       hasMore: false,
     })
+  })
+})
+
+describe('usePagedNovelResource hook', () => {
+  it('does not fire a stale-page request when the resource changes', async () => {
+    const fetchCalls: Array<{ resourceId: string; page: number }> = []
+    let currentFetchResourceId = 'author-a'
+    let setResource: (id: string) => void = () => {}
+
+    const fetchPage = (page: number) => {
+      fetchCalls.push({ resourceId: currentFetchResourceId, page })
+      return Promise.resolve(createResponse(page, [createNovel(`${currentFetchResourceId}-${page}`)]))
+    }
+    const getErrorMessage = () => 'error'
+
+    function Harness() {
+      const [resourceId, setResourceId] = useState('author-a')
+      setResource = (id) => {
+        currentFetchResourceId = id
+        setResourceId(id)
+      }
+      const { novels, loadMore } = usePagedNovelResource<ResourceMeta>({
+        resourceId,
+        fetchPage,
+        getErrorMessage,
+      })
+      return createElement(
+        'div',
+        null,
+        createElement('span', { 'data-testid': 'count' }, novels.length),
+        createElement('button', { type: 'button', onClick: loadMore }, 'more'),
+      )
+    }
+
+    const { container, unmount } = renderReactElement(createElement(Harness))
+
+    // Initial load: page 1 of author-a
+    await act(async () => {
+      await Promise.resolve()
+    })
+    // Advance to page 2 so the old state.page differs from 1
+    const moreButton = container.querySelector('button')!
+    await act(async () => {
+      moreButton.click()
+      await Promise.resolve()
+    })
+
+    expect(fetchCalls).toEqual([
+      { resourceId: 'author-a', page: 1 },
+      { resourceId: 'author-a', page: 2 },
+    ])
+
+    // Switch resource: must fetch ONLY page 1 of author-b, never page 2
+    await act(async () => {
+      setResource('author-b')
+      await Promise.resolve()
+    })
+
+    const authorBCalls = fetchCalls.filter((call) => call.resourceId === 'author-b')
+    expect(authorBCalls).toEqual([{ resourceId: 'author-b', page: 1 }])
+
+    unmount()
   })
 })

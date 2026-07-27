@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Novel } from '../types/novel'
 import { normalizeOptionalPage } from '../utils/pageInput'
 
@@ -102,6 +102,11 @@ export function usePagedNovelResource<TResource>({
   const [state, setState] = useState<PagedNovelState<TResource>>(() =>
     createEmptyPagedNovelState<TResource>(),
   )
+  // The resource the fetch effect last loaded for. When resourceId changes,
+  // the reset and fetch effects run in the same commit while state.page is
+  // still the OLD resource's page — without a guard that fires a doomed
+  // request (e.g. page 3 of the new author) that is discarded and refetched.
+  const loadedResourceIdRef = useRef<string | undefined>(undefined)
 
   useEffect(() => {
     setState(createEmptyPagedNovelState<TResource>())
@@ -109,6 +114,15 @@ export function usePagedNovelResource<TResource>({
 
   useEffect(() => {
     if (!resourceId) return
+
+    // Stale commit between a resource switch and its state reset: skip and
+    // let the post-reset run (page 1) do the single fetch. A stale page 1 is
+    // equivalent to the post-reset fetch, so it may proceed directly.
+    const stateIsStale = loadedResourceIdRef.current !== undefined &&
+      loadedResourceIdRef.current !== resourceId
+    if (stateIsStale && state.page !== 1) return
+
+    loadedResourceIdRef.current = resourceId
 
     let isActive = true
 

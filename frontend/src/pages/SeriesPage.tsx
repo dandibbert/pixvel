@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import NovelPreviewModal from '../components/novel/NovelPreviewModal'
 import { Novel } from '../types/novel'
@@ -31,8 +31,15 @@ export default function SeriesPage() {
   const { id } = useParams()
   const novelPreview = useNovelPreview<Novel>()
 
+  // Latest-ref for t: fetch callbacks must stay referentially stable across
+  // locale switches, or the paged-resource effect refetches the whole list.
+  const tRef = useRef(t)
+  useEffect(() => {
+    tRef.current = t
+  }, [t])
+
   const fetchSeriesPage = useCallback(async (page: number): Promise<PagedNovelResponse<SeriesResponse['series']>> => {
-    if (!id) throw new Error(t('series.loadErrorFallback'))
+    if (!id) throw new Error(tRef.current('series.loadErrorFallback'))
 
     const response = await api.get<SeriesResponse>(`/novels/series/${id}`, {
       page,
@@ -45,11 +52,11 @@ export default function SeriesPage() {
       nextPage: response.nextPage,
       hasMore: response.hasMore,
     })
-  }, [id, t])
+  }, [id])
 
   const getSeriesLoadErrorMessage = useCallback((error: unknown) => {
-    return buildPagedCollectionLoadErrorMessage(error, t('series.loadErrorFallback'))
-  }, [t])
+    return buildPagedCollectionLoadErrorMessage(error, tRef.current('series.loadErrorFallback'))
+  }, [])
 
   const {
     resource: series,
