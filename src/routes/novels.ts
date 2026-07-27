@@ -15,7 +15,7 @@ import {
   buildSeriesNovelListResponse,
   buildUserNovelListResponse,
 } from "../services/novel_list.ts";
-import { resolvePixivNovelSeries } from "../services/novel_series.ts";
+import { resolvePixivNovelSeriesCached } from "../services/novel_series.ts";
 import {
   buildNovelContentSuccessBody,
   buildNovelDetailApiPath,
@@ -29,14 +29,17 @@ import {
   buildUserNovelsApiPath,
   NOVEL_SERIES_CACHE_HEADERS,
 } from "../services/novel_route_model.ts";
-import { createSessionPixivClient, requireSession } from "../services/route_auth.ts";
+import { type SessionEnv, sessionMiddleware } from "../middleware/session.ts";
+import { createSessionPixivClient } from "../services/route_auth.ts";
 import {
   buildLoggedRouteErrorResponse,
   buildRoutePublicErrorResponse,
   logRouteError,
 } from "../services/route_response.ts";
 
-const novels = new Hono();
+const novels = new Hono<SessionEnv>();
+
+novels.use("*", sessionMiddleware);
 
 /**
  * GET /api/novels/search
@@ -44,11 +47,8 @@ const novels = new Hono();
  */
 novels.get("/search", async (c) => {
   try {
-    const auth = await requireSession(c);
-    if (!auth.ok) return auth.response;
-
     const searchRequest = buildNovelSearchRouteRequest((name) => c.req.query(name));
-    const client = createSessionPixivClient(auth.sessionId, auth.session);
+    const client = createSessionPixivClient(c.get("sessionId"), c.get("session"));
 
     const response = await client.fetch<{
       novels: PixivNovelSummaryPayload[];
@@ -76,15 +76,12 @@ novels.get("/search", async (c) => {
  */
 novels.get("/user/:userId", async (c) => {
   try {
-    const auth = await requireSession(c);
-    if (!auth.ok) return auth.response;
-
     const listRequest = buildUserNovelListRouteRequest({
       userId: c.req.param("userId"),
       page: c.req.query("page"),
     });
 
-    const client = createSessionPixivClient(auth.sessionId, auth.session);
+    const client = createSessionPixivClient(c.get("sessionId"), c.get("session"));
 
     const response = await client.fetch<{
       novels: PixivNovelSummaryPayload[];
@@ -113,15 +110,12 @@ novels.get("/user/:userId", async (c) => {
  */
 novels.get("/series/:seriesId", async (c) => {
   try {
-    const auth = await requireSession(c);
-    if (!auth.ok) return auth.response;
-
     const listRequest = buildSeriesNovelListRouteRequest({
       seriesId: c.req.param("seriesId"),
       page: c.req.query("page"),
     });
 
-    const client = createSessionPixivClient(auth.sessionId, auth.session);
+    const client = createSessionPixivClient(c.get("sessionId"), c.get("session"));
 
     const response = await client.fetch<{
       novel_series_detail?: {
@@ -157,13 +151,10 @@ novels.get("/series/:seriesId", async (c) => {
  */
 novels.get("/:id", async (c) => {
   try {
-    const auth = await requireSession(c);
-    if (!auth.ok) return auth.response;
-
     const detailRequest = buildNovelDetailRouteRequest({
       novelId: c.req.param("id"),
     });
-    const client = createSessionPixivClient(auth.sessionId, auth.session);
+    const client = createSessionPixivClient(c.get("sessionId"), c.get("session"));
 
     const response = await client.fetch<{
       novel: PixivNovelDetailPayload;
@@ -186,18 +177,16 @@ novels.get("/:id", async (c) => {
  */
 novels.get("/:id/content", async (c) => {
   try {
-    const auth = await requireSession(c);
-    if (!auth.ok) return auth.response;
-
+    const session = c.get("session");
     const detailRequest = buildNovelDetailRouteRequest({
       novelId: c.req.param("id"),
     });
 
     const content = await fetchPixivNovelContent({
       novelId: detailRequest.novelId,
-      accessToken: auth.session.accessToken,
-      refreshToken: auth.session.refreshToken,
-      sessionId: auth.sessionId,
+      accessToken: session.accessToken,
+      refreshToken: session.refreshToken,
+      sessionId: c.get("sessionId"),
     });
 
     return c.json(buildNovelContentSuccessBody(content, detailRequest.novelId));
@@ -214,16 +203,13 @@ novels.get("/:id/content", async (c) => {
  */
 novels.get("/:id/series", async (c) => {
   try {
-    const auth = await requireSession(c);
-    if (!auth.ok) return auth.response;
-
     const seriesResolveRequest = buildNovelSeriesResolveRouteRequest({
       novelId: c.req.param("id"),
       seriesId: c.req.query("series_id"),
       seriesTitle: c.req.query("series_title"),
     });
-    const client = createSessionPixivClient(auth.sessionId, auth.session);
-    const series = await resolvePixivNovelSeries({
+    const client = createSessionPixivClient(c.get("sessionId"), c.get("session"));
+    const series = await resolvePixivNovelSeriesCached({
       novelId: seriesResolveRequest.novelId,
       hintedSeriesId: seriesResolveRequest.hintedSeriesId,
       hintedSeriesTitle: seriesResolveRequest.hintedSeriesTitle,

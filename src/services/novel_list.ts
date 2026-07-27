@@ -35,6 +35,7 @@ interface BuildNovelListRequestOptions {
 export interface NovelListRequest {
   params: URLSearchParams;
   page: number;
+  id: number;
 }
 
 export function buildNovelListParams(
@@ -58,6 +59,7 @@ export function buildNovelListRequest({
   return {
     params: buildNovelListParams(idParamName, id, parsedPage),
     page: parsedPage,
+    id,
   };
 }
 

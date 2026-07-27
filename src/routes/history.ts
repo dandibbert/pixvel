@@ -2,7 +2,8 @@
  * Reading history API routes
  */
 import { Hono } from "hono";
-import { appendHistory, getHistory, getPosition, setPosition } from "../services/kv_store.ts";
+import { getHistory, getPosition, savePositionWithHistory } from "../services/kv_store.ts";
+import { type SessionEnv, sessionMiddleware } from "../middleware/session.ts";
 import {
   buildHistoryListResponse,
   buildHistoryListRouteRequest,
@@ -11,7 +12,6 @@ import {
   buildReadingPositionRouteRequest,
   buildTimestampedHistoryPositionUpdate,
 } from "../services/history_model.ts";
-import { requireSession } from "../services/route_auth.ts";
 import {
   buildLoggedRouteErrorResponse,
   buildRouteErrorResponse,
@@ -19,7 +19,9 @@ import {
   logRouteError,
 } from "../services/route_response.ts";
 
-const history = new Hono();
+const history = new Hono<SessionEnv>();
+
+history.use("*", sessionMiddleware);
 
 /**
  * POST /api/history/position
@@ -27,19 +29,19 @@ const history = new Hono();
  */
 history.post("/position", async (c) => {
   try {
-    const auth = await requireSession(c);
-    if (!auth.ok) return auth.response;
+    const session = c.get("session");
 
     const body = await c.req.json();
     const update = buildTimestampedHistoryPositionUpdate({ body });
 
-    // Save position
-    await setPosition(auth.session.userId, update.novelId, update.position, update.updatedAt);
-
-    // Update history entry
-    if (update.historyEntry) {
-      await appendHistory(auth.session.userId, update.historyEntry);
-    }
+    // Save position and history entry atomically in a single KV commit
+    await savePositionWithHistory(
+      session.userId,
+      update.novelId,
+      update.position,
+      update.updatedAt,
+      update.historyEntry ?? undefined,
+    );
 
     return c.json(buildSuccessResponse());
   } catch (error) {
@@ -56,13 +58,12 @@ history.post("/position", async (c) => {
  */
 history.get("/position/:id", async (c) => {
   try {
-    const auth = await requireSession(c);
-    if (!auth.ok) return auth.response;
+    const session = c.get("session");
 
     const positionRequest = buildReadingPositionRouteRequest({
       novelId: c.req.param("id"),
     });
-    const positionData = await getPosition(auth.session.userId, positionRequest.novelId);
+    const positionData = await getPosition(session.userId, positionRequest.novelId);
 
     return c.json(buildReadingPositionResponse(positionData));
   } catch (error) {
@@ -81,13 +82,12 @@ history.get("/position/:id", async (c) => {
  */
 history.get("/novels", async (c) => {
   try {
-    const auth = await requireSession(c);
-    if (!auth.ok) return auth.response;
+    const session = c.get("session");
 
     const historyRequest = buildHistoryListRouteRequest({
       limit: c.req.query("limit"),
     });
-    const entries = await getHistory(auth.session.userId, historyRequest.limit);
+    const entries = await getHistory(session.userId, historyRequest.limit);
 
     return c.json(buildHistoryListResponse(entries));
   } catch (error) {

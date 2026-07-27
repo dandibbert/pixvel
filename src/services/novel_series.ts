@@ -1,10 +1,11 @@
-import {
-  arrayOrEmpty,
-  firstNonEmptyString,
-  stringOrEmpty,
-} from "./default_values.ts";
+import { arrayOrEmpty, firstNonEmptyString, stringOrEmpty } from "./default_values.ts";
 import { buildNovelDetailApiPath } from "./novel_route_model.ts";
 import type { PixivNovelSummaryPayload } from "./novel_transformer.ts";
+import {
+  type CachedSeriesResolution,
+  getCachedSeriesResolution,
+  setCachedSeriesResolution,
+} from "./kv_store.ts";
 
 export interface PixivNovelSeriesClient {
   fetch: (path: string) => Promise<unknown>;
@@ -52,6 +53,48 @@ export function buildNovelTextApiPath(novelId: number): string {
 export function buildNovelSeriesPageApiPath(seriesId: number, offset?: number): string {
   const base = `/v2/novel/series?series_id=${seriesId}`;
   return offset === undefined ? base : `${base}&offset=${offset}`;
+}
+
+export interface ResolvePixivNovelSeriesCacheDependencies<T> {
+  getCached: (novelId: number) => Promise<CachedSeriesResolution<T> | null>;
+  setCached: (novelId: number, series: T | null) => Promise<void>;
+}
+
+/**
+ * Cached wrapper around resolvePixivNovelSeries.
+ *
+ * The pagination fallback inside can cost up to SERIES_FALLBACK_PAGE_LIMIT
+ * sequential upstream calls, so results (including "no series") are cached
+ * in KV for 1h. Cache failures degrade to a direct resolve — never block
+ * the request on cache availability.
+ */
+export async function resolvePixivNovelSeriesCached(
+  options: ResolvePixivNovelSeriesOptions,
+  dependencies: ResolvePixivNovelSeriesCacheDependencies<NovelSeriesInfo> = {
+    getCached: getCachedSeriesResolution<NovelSeriesInfo>,
+    setCached: setCachedSeriesResolution<NovelSeriesInfo>,
+  },
+): Promise<NovelSeriesInfo | null> {
+  let cached: CachedSeriesResolution<NovelSeriesInfo> | null = null;
+  try {
+    cached = await dependencies.getCached(options.novelId);
+  } catch {
+    // Cache read failure: fall through to a direct resolve
+  }
+
+  if (cached) {
+    return cached.found ? cached.series : null;
+  }
+
+  const series = await resolvePixivNovelSeries(options);
+
+  try {
+    await dependencies.setCached(options.novelId, series);
+  } catch {
+    // Cache write failure is non-fatal; the resolution already succeeded
+  }
+
+  return series;
 }
 
 export async function resolvePixivNovelSeries({

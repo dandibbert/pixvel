@@ -11,11 +11,14 @@ import {
   buildBookmarkedNovelsRequest,
   buildBookmarkedNovelsResponse,
 } from "../services/bookmark_model.ts";
+import { type SessionEnv, sessionMiddleware } from "../middleware/session.ts";
 import { type PixivNovelSummaryPayload } from "../services/novel_transformer.ts";
-import { createSessionPixivClient, requireSession } from "../services/route_auth.ts";
+import { createSessionPixivClient } from "../services/route_auth.ts";
 import { buildLoggedRouteErrorResponse, buildSuccessResponse } from "../services/route_response.ts";
 
-const bookmarks = new Hono();
+const bookmarks = new Hono<SessionEnv>();
+
+bookmarks.use("*", sessionMiddleware);
 
 /**
  * POST /api/bookmarks/novel
@@ -23,12 +26,9 @@ const bookmarks = new Hono();
  */
 bookmarks.post("/novel", async (c) => {
   try {
-    const auth = await requireSession(c);
-    if (!auth.ok) return auth.response;
-
     const body = await c.req.json();
     const bookmarkRequest = buildBookmarkAddRequest(body);
-    const client = createSessionPixivClient(auth.sessionId, auth.session);
+    const client = createSessionPixivClient(c.get("sessionId"), c.get("session"));
 
     // Call Pixiv API to add bookmark
     await client.fetch(buildBookmarkAddApiPath(), {
@@ -53,12 +53,9 @@ bookmarks.post("/novel", async (c) => {
  */
 bookmarks.delete("/novel/:id", async (c) => {
   try {
-    const auth = await requireSession(c);
-    if (!auth.ok) return auth.response;
-
     const novelId = c.req.param("id");
     const bookmarkRequest = buildBookmarkDeleteRequest(novelId);
-    const client = createSessionPixivClient(auth.sessionId, auth.session);
+    const client = createSessionPixivClient(c.get("sessionId"), c.get("session"));
 
     // Call Pixiv API to delete bookmark
     await client.fetch(buildBookmarkDeleteApiPath(), {
@@ -83,16 +80,14 @@ bookmarks.delete("/novel/:id", async (c) => {
  */
 bookmarks.get("/novels", async (c) => {
   try {
-    const auth = await requireSession(c);
-    if (!auth.ok) return auth.response;
-
+    const session = c.get("session");
     const bookmarksRequest = buildBookmarkedNovelsRequest({
-      userId: auth.session.userId,
+      userId: session.userId,
       restrict: c.req.query("restrict"),
       page: c.req.query("page"),
     });
 
-    const client = createSessionPixivClient(auth.sessionId, auth.session);
+    const client = createSessionPixivClient(c.get("sessionId"), session);
 
     // Call Pixiv API
     const response = await client.fetch<{

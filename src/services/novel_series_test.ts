@@ -1,8 +1,9 @@
 import { assertJsonEquals as assertEquals } from "./test_asserts.ts";
 import {
-  buildNovelTextApiPath,
   buildNovelSeriesPageApiPath,
+  buildNovelTextApiPath,
   resolvePixivNovelSeries,
+  resolvePixivNovelSeriesCached,
 } from "./novel_series.ts";
 
 Deno.test("buildNovelTextApiPath returns the novel text endpoint", () => {
@@ -165,4 +166,84 @@ Deno.test("resolvePixivNovelSeries stops paginated fallback after safety cap", a
     title: "Paged series",
   });
   assertEquals(calls.length, 31);
+});
+
+Deno.test("resolvePixivNovelSeriesCached returns cache hits without touching upstream", async () => {
+  const { calls, client } = createClient({});
+  const cachedSeries = { id: "9", title: "Cached Series" };
+
+  const result = await resolvePixivNovelSeriesCached(
+    { novelId: 123, hintedSeriesId: 9, client },
+    {
+      getCached: () => Promise.resolve({ found: true, series: cachedSeries }),
+      setCached: () => {
+        throw new Error("setCached should not be called on a cache hit");
+      },
+    },
+  );
+
+  assertEquals(result, cachedSeries);
+  assertEquals(calls, []);
+});
+
+Deno.test("resolvePixivNovelSeriesCached caches negative resolutions", async () => {
+  const { client } = createClient({
+    "/v2/novel/detail?novel_id=123": { novel: { id: 123 } },
+  });
+  const writes: Array<{ novelId: number; series: unknown }> = [];
+
+  const result = await resolvePixivNovelSeriesCached(
+    { novelId: 123, client },
+    {
+      getCached: () => Promise.resolve(null),
+      setCached: (novelId, series) => {
+        writes.push({ novelId, series });
+        return Promise.resolve();
+      },
+    },
+  );
+
+  assertEquals(result, null);
+  assertEquals(writes, [{ novelId: 123, series: null }]);
+});
+
+Deno.test("resolvePixivNovelSeriesCached negative cache hit skips upstream entirely", async () => {
+  const { calls, client } = createClient({});
+
+  const result = await resolvePixivNovelSeriesCached(
+    { novelId: 123, client },
+    {
+      getCached: () => Promise.resolve({ found: false, series: null }),
+      setCached: () => {
+        throw new Error("setCached should not be called on a cache hit");
+      },
+    },
+  );
+
+  assertEquals(result, null);
+  assertEquals(calls, []);
+});
+
+Deno.test("resolvePixivNovelSeriesCached degrades to direct resolve when the cache fails", async () => {
+  const { calls, client } = createClient({
+    "/v1/novel/text?novel_id=123": {
+      series_prev: null,
+      series_next: { id: 124, title: "Next" },
+    },
+  });
+
+  const result = await resolvePixivNovelSeriesCached(
+    { novelId: 123, hintedSeriesId: 9, hintedSeriesTitle: "Series", client },
+    {
+      getCached: () => Promise.reject(new Error("kv unavailable")),
+      setCached: () => Promise.reject(new Error("kv unavailable")),
+    },
+  );
+
+  assertEquals(result, {
+    id: "9",
+    title: "Series",
+    next_novel: { id: "124", title: "Next" },
+  });
+  assertEquals(calls, ["/v1/novel/text?novel_id=123"]);
 });
