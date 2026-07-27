@@ -2,8 +2,9 @@
  * Deno backend server with OAuth 2.0 authentication
  */
 import { Hono } from "hono";
-import { cors } from "hono/middleware/cors/index.ts";
-import { logger } from "hono/middleware/logger/index.ts";
+import { HTTPException } from "hono/http-exception";
+import { cors } from "hono/cors";
+import { logger } from "hono/logger";
 import auth from "./routes/auth.ts";
 import novels from "./routes/novels.ts";
 import history from "./routes/history.ts";
@@ -44,12 +45,15 @@ app.get("*", async (c) => {
 // Error handling
 app.onError((err, c) => {
   console.error("Error:", err);
+  if (err instanceof HTTPException) {
+    return err.getResponse();
+  }
   const status = (err as { status?: number }).status || 500;
   return c.json({
     error: err.name,
     message: err.message,
     status,
-  }, status);
+  }, status as 500);
 });
 
 // Start server

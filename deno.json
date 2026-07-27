@@ -1,5 +1,6 @@
 {
   "unstable": ["kv"],
+  "exclude": ["frontend"],
   "tasks": {
     "dev": "deno run --allow-net --allow-env --allow-read --allow-write --unstable-kv --watch src/index.ts",
     "start": "deno run --allow-net --allow-env --allow-read --allow-write --unstable-kv src/index.ts",
@@ -22,8 +23,8 @@
     "lib": ["deno.window", "deno.unstable"]
   },
   "imports": {
-    "hono": "https://deno.land/x/hono@v3.12.8/mod.ts",
-    "hono/": "https://deno.land/x/hono@v3.12.8/"
+    "hono": "jsr:@hono/hono@^4.6.0",
+    "hono/": "jsr:/@hono/hono@^4.6.0/"
   },
   "deploy": {
     "org": "dandibbert",

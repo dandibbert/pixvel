@@ -1,6 +1,6 @@
 import { assertStrictEquals as assertEquals } from "../services/test_asserts.ts";
 import { assertRejectsError } from "../services/test_asserts.ts";
-import { withRetry } from "./retry.ts";
+import { isRetryableNetworkError, withRetry } from "./retry.ts";
 
 Deno.test("withRetry resolves on first success", async () => {
   let calls = 0;
@@ -87,4 +87,46 @@ Deno.test("withRetry retries on all recognized network error messages", async ()
     );
     assertEquals(calls, 2);
   }
+});
+
+Deno.test("isRetryableNetworkError recognizes real Deno fetch transport errors", () => {
+  // Deno throws TypeError for transport failures
+  assertEquals(
+    isRetryableNetworkError(
+      new TypeError(
+        "error sending request for url (https://app-api.pixiv.net/): client error (Connect): tcp connect error: Connection refused (os error 61)",
+      ),
+    ),
+    true,
+  );
+  // Same message shape but generic Error (e.g. re-wrapped upstream)
+  assertEquals(
+    isRetryableNetworkError(new Error("error sending request for url (https://x): dns error")),
+    true,
+  );
+  // AbortSignal.timeout produces a DOMException named TimeoutError
+  const timeoutError = new Error("Signal timed out.");
+  timeoutError.name = "TimeoutError";
+  assertEquals(isRetryableNetworkError(timeoutError), true);
+});
+
+Deno.test("isRetryableNetworkError rejects application-level errors", () => {
+  assertEquals(isRetryableNetworkError(new Error("Pixiv API error (404): Not Found")), false);
+  assertEquals(isRetryableNetworkError(new Error("OAuth error: Token expired or invalid")), false);
+  assertEquals(isRetryableNetworkError(new Error("something unexpected")), false);
+});
+
+Deno.test("withRetry retries Deno-shaped TypeError transport failures then resolves", async () => {
+  let calls = 0;
+  const result = await withRetry(() => {
+    calls++;
+    if (calls < 2) {
+      return Promise.reject(
+        new TypeError("error sending request for url (https://x): tcp connect error"),
+      );
+    }
+    return Promise.resolve("ok");
+  }, 2);
+  assertEquals(calls, 2);
+  assertEquals(result, "ok");
 });

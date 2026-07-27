@@ -1,11 +1,12 @@
 import type { Context } from "hono";
-import { getCookie } from "hono/helper/cookie/index.ts";
+import { getCookie } from "hono/cookie";
 import { buildAuthSessionErrorResponse } from "./auth_model.ts";
 import type { Session } from "./kv_store.ts";
 import { getSession, updateTokens } from "./kv_store.ts";
 import { PixivClient } from "./pixiv_client.ts";
 
-const ACCESS_TOKEN_TTL_MS = 3600 * 1000;
+/** Fallback when Pixiv's response omits expires_in; matches its historical 1h TTL. */
+const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 3600;
 
 export interface RouteAuthDependencies {
   getSession: (sessionId: string) => Promise<Session | null>;
@@ -88,12 +89,13 @@ export function createSessionTokenRefreshHandler(
     now: Date.now,
   },
 ) {
-  return async (accessToken: string, refreshToken: string) => {
+  return async (accessToken: string, refreshToken: string, expiresIn?: number) => {
+    const ttlSeconds = expiresIn ?? DEFAULT_ACCESS_TOKEN_TTL_SECONDS;
     await dependencies.updateTokens(
       sessionId,
       accessToken,
       refreshToken,
-      dependencies.now() + ACCESS_TOKEN_TTL_MS,
+      dependencies.now() + ttlSeconds * 1000,
     );
   };
 }
@@ -103,5 +105,7 @@ export function createSessionPixivClient(sessionId: string, session: Session) {
     session.accessToken,
     session.refreshToken,
     createSessionTokenRefreshHandler(sessionId),
+    // Known expiry enables proactive refresh before doomed upstream calls
+    { expiresAt: session.expiresAt },
   );
 }

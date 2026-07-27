@@ -42,8 +42,9 @@ Deno.test("getStaticContentType returns known web asset content types", () => {
   assertEquals(getStaticContentType("./frontend/dist/assets/logo.png"), "image/png");
   assertEquals(getStaticContentType("./frontend/dist/assets/logo.jpg"), "image/jpeg");
   assertEquals(getStaticContentType("./frontend/dist/assets/icon.svg"), "image/svg+xml");
+  assertEquals(getStaticContentType("./frontend/dist/assets/font.woff2"), "font/woff2");
   assertEquals(
-    getStaticContentType("./frontend/dist/assets/font.woff2"),
+    getStaticContentType("./frontend/dist/assets/archive.tar"),
     "application/octet-stream",
   );
 });
@@ -85,6 +86,21 @@ Deno.test("serveStaticAsset falls back to SPA index when an app route is not a f
   assertEquals(await readText(response), "<html>app</html>");
 });
 
+Deno.test("serveStaticAsset returns null instead of SPA fallback for missing asset files", async () => {
+  const readPaths: string[] = [];
+  const response = await serveStaticAsset("/assets/index-OLDHASH.js", {
+    rootDir: "./frontend/dist",
+    readFile: (path) => {
+      readPaths.push(path);
+      return Promise.reject(new Deno.errors.NotFound());
+    },
+  });
+
+  // A stale hashed bundle must 404, not receive index.html as fake JS
+  assertEquals(response, null);
+  assertEquals(readPaths.join(","), "./frontend/dist/assets/index-OLDHASH.js");
+});
+
 Deno.test("serveStaticAsset requires browsers to revalidate HTML", async () => {
   const response = await serveStaticAsset("/", {
     rootDir: "./frontend/dist",
@@ -92,6 +108,31 @@ Deno.test("serveStaticAsset requires browsers to revalidate HTML", async () => {
   });
 
   if (!response) throw new Error("Expected static HTML response");
+
+  assertEquals(response.headers.get("Cache-Control"), "no-cache");
+});
+
+Deno.test("serveStaticAsset marks hashed asset files as immutable", async () => {
+  const response = await serveStaticAsset("/assets/index-BHgkLuGD.js", {
+    rootDir: "./frontend/dist",
+    readFile: () => Promise.resolve(new TextEncoder().encode("console.log('ok')")),
+  });
+
+  if (!response) throw new Error("Expected static asset response");
+
+  assertEquals(
+    response.headers.get("Cache-Control"),
+    "public, max-age=31536000, immutable",
+  );
+});
+
+Deno.test("serveStaticAsset does not mark non-hashed root files as immutable", async () => {
+  const response = await serveStaticAsset("/favicon.svg", {
+    rootDir: "./frontend/dist",
+    readFile: () => Promise.resolve(new TextEncoder().encode("<svg></svg>")),
+  });
+
+  if (!response) throw new Error("Expected static asset response");
 
   assertEquals(response.headers.get("Cache-Control"), "no-cache");
 });

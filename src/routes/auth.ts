@@ -2,7 +2,7 @@
  * Authentication routes - Simplified for refresh_token based auth
  */
 import { Hono } from "hono";
-import { deleteCookie, getCookie, setCookie } from "hono/helper/cookie/index.ts";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { refreshAccessToken } from "../services/oauth_service.ts";
 import { deleteSession, putSession } from "../services/kv_store.ts";
 import { logRouteError } from "../services/route_response.ts";

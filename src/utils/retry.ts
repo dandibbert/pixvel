@@ -5,6 +5,41 @@
  * - Other errors: fail immediately
  */
 
+/** Abort upstream fetches that hang; TimeoutError is treated as retryable. */
+export const UPSTREAM_FETCH_TIMEOUT_MS = 15_000;
+
+/**
+ * Message fragments that indicate a transient network failure.
+ * Includes Node-style codes and the shapes Deno's fetch actually throws,
+ * e.g. "TypeError: error sending request for url (...): client error (Connect):
+ * tcp connect error: Connection refused (os error 61)".
+ */
+const NETWORK_ERROR_MESSAGE_MARKERS = [
+  "fetch",
+  "network",
+  "econnrefused",
+  "etimedout",
+  "enotfound",
+  "error sending request",
+  "tcp connect error",
+  "connection refused",
+  "connection reset",
+  "dns error",
+];
+
+/**
+ * Determine whether an error is a transient network failure worth retrying.
+ * Deno throws TypeError for fetch transport errors and TimeoutError DOMException
+ * for AbortSignal.timeout expirations.
+ */
+export function isRetryableNetworkError(error: Error): boolean {
+  if (error.name === "TimeoutError") return true;
+  if (error instanceof TypeError) return true;
+
+  const message = error.message.toLowerCase();
+  return NETWORK_ERROR_MESSAGE_MARKERS.some((marker) => message.includes(marker));
+}
+
 /**
  * Wrap a function with retry logic
  * @param fn Function to retry
@@ -28,14 +63,7 @@ export async function withRetry<T>(
         throw lastError; // Don't retry rate limit errors
       }
 
-      // Check if we should retry (network errors only)
-      const isNetworkError = lastError.message.includes("fetch") ||
-        lastError.message.includes("network") ||
-        lastError.message.includes("ECONNREFUSED") ||
-        lastError.message.includes("ETIMEDOUT") ||
-        lastError.message.includes("ENOTFOUND");
-
-      if (!isNetworkError || attempt === maxRetries) {
+      if (!isRetryableNetworkError(lastError) || attempt === maxRetries) {
         throw lastError;
       }
 

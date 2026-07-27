@@ -10,7 +10,22 @@ const CONTENT_TYPES: Record<string, string> = {
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
   svg: "image/svg+xml",
+  ico: "image/x-icon",
+  woff: "font/woff",
+  woff2: "font/woff2",
 };
+
+/**
+ * Vite emits content-hashed filenames under /assets/, so those files can be
+ * cached forever; HTML must always be revalidated so new deploys are picked up.
+ */
+const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
+const HTML_CACHE_CONTROL = "no-cache";
+
+export function getStaticCacheControl(assetPath: string, contentType: string): string {
+  if (contentType === "text/html") return HTML_CACHE_CONTROL;
+  return assetPath.includes("/assets/") ? IMMUTABLE_CACHE_CONTROL : HTML_CACHE_CONTROL;
+}
 
 export interface StaticAssetDependencies {
   rootDir?: string;
@@ -51,6 +66,16 @@ export function getStaticContentType(filePath: string) {
   return CONTENT_TYPES[extension] || "application/octet-stream";
 }
 
+/**
+ * Paths with a file extension are asset requests: a missing asset (e.g. a
+ * stale hashed bundle after a redeploy) must 404 instead of serving
+ * index.html as fake JS/CSS. Extensionless paths are SPA routes.
+ */
+export function isSpaRoutePath(pathname: string): boolean {
+  const lastSegment = pathname.split("/").pop() ?? "";
+  return !lastSegment.includes(".");
+}
+
 export async function serveStaticAsset(
   pathname: string,
   dependencies: StaticAssetDependencies = {},
@@ -64,12 +89,14 @@ export async function serveStaticAsset(
 
   try {
     const file = await readFile(assetPath);
-    return createStaticResponse(file, getStaticContentType(assetPath));
+    return createStaticResponse(file, getStaticContentType(assetPath), assetPath);
   } catch {
+    if (!isSpaRoutePath(pathname)) return null;
+
     try {
       const fallbackPath = `${normalizeStaticRoot(rootDir)}/${indexPath}`;
       const indexFile = await readFile(fallbackPath);
-      return createStaticResponse(indexFile, "text/html");
+      return createStaticResponse(indexFile, "text/html", fallbackPath);
     } catch {
       return null;
     }
@@ -84,12 +111,16 @@ function decodeSafePathname(pathname: string) {
   }
 }
 
-function createStaticResponse(file: Uint8Array<ArrayBuffer>, contentType: string) {
+function createStaticResponse(
+  file: Uint8Array<ArrayBuffer>,
+  contentType: string,
+  assetPath: string,
+) {
   return new Response(file, {
     status: 200,
     headers: {
       "Content-Type": contentType,
-      ...(contentType === "text/html" ? { "Cache-Control": "no-cache" } : {}),
+      "Cache-Control": getStaticCacheControl(assetPath, contentType),
     },
   });
 }

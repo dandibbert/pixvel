@@ -1,5 +1,6 @@
 import { updateTokens } from "./kv_store.ts";
 import { refreshAccessToken } from "./oauth_service.ts";
+import { UPSTREAM_FETCH_TIMEOUT_MS } from "../utils/retry.ts";
 
 export class NovelContentUnavailableError extends Error {
   constructor(message: string) {
@@ -82,7 +83,10 @@ export async function fetchPixivNovelContent({
   now?: NowFn;
 }) {
   const url = buildPixivNovelContentWebviewUrl(novelId);
-  let response = await fetchFn(url, { headers: buildWebviewHeaders(accessToken) });
+  let response = await fetchFn(url, {
+    headers: buildWebviewHeaders(accessToken),
+    signal: AbortSignal.timeout(UPSTREAM_FETCH_TIMEOUT_MS),
+  });
 
   if (!response.ok && (response.status === 400 || response.status === 401)) {
     if (!sessionId) {
@@ -96,7 +100,10 @@ export async function fetchPixivNovelContent({
       tokenResponse.refresh_token,
       now() + tokenResponse.expires_in * 1000,
     );
-    response = await fetchFn(url, { headers: buildWebviewHeaders(tokenResponse.access_token) });
+    response = await fetchFn(url, {
+      headers: buildWebviewHeaders(tokenResponse.access_token),
+      signal: AbortSignal.timeout(UPSTREAM_FETCH_TIMEOUT_MS),
+    });
   }
 
   if (!response.ok) {
