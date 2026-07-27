@@ -1,7 +1,11 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { createJSONStorage, persist } from 'zustand/middleware'
 import { NovelDetail, NovelPage } from '../types/novel'
 import { api } from '../utils/api'
+import {
+  createDebouncedStateStorage,
+  registerPageHideFlush,
+} from '../utils/debouncedStorage'
 import { logErrorDescriptor } from '../utils/errorLog'
 import {
   buildClearedReaderLoadState,
@@ -45,7 +49,12 @@ interface ReaderState {
 
 export const useReaderStore = create<ReaderState>()(
   persist<ReaderState, [], [], ReaderPersistSnapshot>(
-    (set, get) => ({
+    (set, get) => {
+      // Guards against out-of-order responses when navigating between novels
+      // quickly: only the latest loadNovel call may write reader state.
+      let loadSeq = 0
+
+      return {
       novel: null,
       pages: [],
       currentPage: 1,
@@ -56,6 +65,7 @@ export const useReaderStore = create<ReaderState>()(
       cacheOrder: [],
 
       loadNovel: async (novelId, forceRefresh = false) => {
+        const seq = ++loadSeq
         try {
           set(buildReaderLoadingState())
 
@@ -77,6 +87,7 @@ export const useReaderStore = create<ReaderState>()(
             api.get<NovelDetail>(`/novels/${novelId}`),
             api.get<{ content: string; novelId?: number }>(`/novels/${novelId}/content`),
           ])
+          if (seq !== loadSeq) return
 
           if (!contentResponse.content) {
             throw new Error(READER_ERROR_CODES.contentEmpty)
@@ -100,6 +111,7 @@ export const useReaderStore = create<ReaderState>()(
             updatedCache,
           }))
         } catch (error) {
+          if (seq !== loadSeq) return
           const errorLog = buildReaderLoadErrorLog(error)
           logErrorDescriptor(errorLog)
           set(buildReaderErrorState(error))
@@ -144,10 +156,19 @@ export const useReaderStore = create<ReaderState>()(
           await get().loadNovel(novel.id, true)
         }
       },
-    }),
+      }
+    },
     {
       name: 'reader-cache-storage',
       partialize: buildReaderPersistSnapshot,
+      // Debounced: page turns touch cache timestamps, and serializing up to
+      // 20 full novel texts to localStorage on every set() is main-thread
+      // jank. Trailing write flushes on pagehide/hidden.
+      storage: createJSONStorage(() =>
+        createDebouncedStateStorage(localStorage, {
+          registerFlush: registerPageHideFlush,
+        })
+      ),
     }
   )
 )

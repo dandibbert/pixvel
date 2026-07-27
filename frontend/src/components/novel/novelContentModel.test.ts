@@ -21,4 +21,23 @@ describe('novelContentModel', () => {
     expect(buildJumpPageLabel(3)).toBe('[jump:3]')
     expect(buildJumpPageLabel(undefined)).toBe('[jump:]')
   })
+
+  it('downgrades non-http(s) links to plain text so novel text cannot inject scripts', () => {
+    expect(resolveNovelContentLinkTarget('javascript:alert(1)')).toEqual({
+      type: 'plain-text',
+      href: null,
+    })
+    expect(resolveNovelContentLinkTarget('data:text/html,x')).toEqual({
+      type: 'plain-text',
+      href: null,
+    })
+    expect(resolveNovelContentLinkTarget('not a url')).toEqual({
+      type: 'plain-text',
+      href: null,
+    })
+    expect(resolveNovelContentLinkTarget('http://example.com/ok')).toEqual({
+      type: 'external',
+      href: 'http://example.com/ok',
+    })
+  })
 })

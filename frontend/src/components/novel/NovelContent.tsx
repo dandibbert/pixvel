@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { parseNovelText, ParsedElement } from '../../utils/novelTextParser'
 import { openAppPathInNewTab } from '../../utils/appNavigation'
 import {
@@ -11,7 +12,8 @@ interface NovelContentProps {
 }
 
 export default function NovelContent({ content, onJumpToPage }: NovelContentProps) {
-  const elements = parseNovelText(content)
+  // Full-text parse is expensive; keyboard-nav re-renders must not redo it
+  const elements = useMemo(() => parseNovelText(content), [content])
 
   const renderElement = (element: ParsedElement, index: number) => {
     switch (element.type) {
@@ -53,6 +55,11 @@ export default function NovelContent({ content, onJumpToPage }: NovelContentProp
               {element.metadata?.linkText}
             </a>
           )
+        }
+
+        // Unsafe scheme (javascript:, data:, ...) — render text, not a link
+        if (linkTarget.type === 'plain-text') {
+          return <span key={index}>{element.metadata?.linkText}</span>
         }
 
         return (

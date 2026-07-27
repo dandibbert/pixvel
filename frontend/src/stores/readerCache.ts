@@ -14,7 +14,10 @@ export interface NovelCache {
   [novelId: string]: CachedNovel
 }
 
-export const MAX_READER_CACHE_SIZE = 20
+// Full novel text is persisted to localStorage. Keep the LRU deliberately
+// small to stay below typical ~5 MiB browser quotas and keep startup JSON
+// hydration off the main-thread hot path as much as possible.
+export const MAX_READER_CACHE_SIZE = 5
 
 interface ReaderCacheState {
   novelCache: NovelCache

@@ -23,12 +23,17 @@ export interface NovelSeries {
 }
 
 export function useNovelDetail(novelId: string | undefined) {
-  const { novel, isLoading, error, loadNovel } = useReaderStore()
+  const novel = useReaderStore((state) => state.novel)
+  const isLoading = useReaderStore((state) => state.isLoading)
+  const error = useReaderStore((state) => state.error)
+  const loadNovel = useReaderStore((state) => state.loadNovel)
   const [series, setSeries] = useState<NovelSeries | null>(null)
   const [seriesLoading, setSeriesLoading] = useState(false)
 
   useEffect(() => {
     if (!novelId) return
+
+    let isActive = true
 
     // Reset scroll position when loading a new novel
     scrollViewportToTop({ behavior: 'auto' })
@@ -36,9 +41,16 @@ export function useNovelDetail(novelId: string | undefined) {
 
     const fetchData = async () => {
       await loadNovel(novelId)
+      if (!isActive) return
 
       // Get the loaded novel from store
       const loadedNovel = useReaderStore.getState().novel
+
+      // Guard against stale state from a superseded navigation
+      if (!loadedNovel || loadedNovel.id !== novelId) {
+        setSeries(null)
+        return
+      }
 
       const seriesRequestPath = buildSeriesRequestPathForNovel(novelId, loadedNovel)
       if (!seriesRequestPath) {
@@ -50,20 +62,26 @@ export function useNovelDetail(novelId: string | undefined) {
         setSeriesLoading(true)
         // Pass series_id and series_title to skip redundant detail API call
         const seriesData = await api.get<NovelSeries>(seriesRequestPath)
-        setSeries(seriesData)
+        if (isActive) setSeries(seriesData)
       } catch (err) {
-        setSeries(null)
+        if (isActive) setSeries(null)
       } finally {
-        setSeriesLoading(false)
+        if (isActive) setSeriesLoading(false)
       }
     }
 
     fetchData()
+
+    return () => {
+      isActive = false
+    }
   }, [novelId, loadNovel])
 
   // Save to reading history when novel is loaded
   useEffect(() => {
-    if (!novel || !novelId) return
+    // novel.id must match the route param so a superseded navigation
+    // cannot record history for the wrong novel
+    if (!novel || !novelId || novel.id !== novelId) return
 
     const saveToHistory = async () => {
       try {

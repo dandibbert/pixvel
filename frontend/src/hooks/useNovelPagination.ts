@@ -13,7 +13,9 @@ import {
 export function useNovelPagination() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { id: novelId } = useParams<{ id: string }>()
-  const { currentPage, totalPages, setPage } = useReaderStore()
+  const currentPage = useReaderStore((state) => state.currentPage)
+  const totalPages = useReaderStore((state) => state.totalPages)
+  const setPage = useReaderStore((state) => state.setPage)
   const isUpdatingRef = useRef(false)
 
   // Clear page parameter when novel ID changes

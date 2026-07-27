@@ -22,7 +22,8 @@ interface NovelReaderProps {
 export default function NovelReader({ series }: NovelReaderProps) {
   const navigate = useNavigate()
   const { t } = useI18n()
-  const { novel, pages } = useReaderStore()
+  const novel = useReaderStore((state) => state.novel)
+  const pages = useReaderStore((state) => state.pages)
   const refreshNovel = useReaderStore((state) => state.refreshNovel)
   const { currentPage, totalPages, goToPage, goToNextPage, goToPrevPage } = useNovelPagination()
   const [isModalOpen, setIsModalOpen] = useState(false)
