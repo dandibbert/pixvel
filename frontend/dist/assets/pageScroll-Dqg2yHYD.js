@@ -1,0 +1,1 @@
+function l({target:t,behavior:n="smooth"}={}){const o=t??(typeof window>"u"?null:window);o&&o.scrollTo({top:0,left:0,behavior:n})}function i({target:t,behavior:n="smooth"}={}){const o=t??(typeof window>"u"?null:window);if(!o)return;const e=()=>l({target:o,behavior:n});e();const r=o.requestAnimationFrame(e);return()=>o.cancelAnimationFrame(r)}export{i as a,l as s};

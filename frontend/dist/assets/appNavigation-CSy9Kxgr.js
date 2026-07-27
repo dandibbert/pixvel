@@ -1,0 +1,1 @@
+const e="_blank",t="noopener,noreferrer";function r(n){return`/novel/${n}`}function a(n){return`/author/${n}`}function i(n){return`/series/${n}`}function u(n,o=window.location){o.href=n}function s(n){window.open(n,e,t)}export{r as a,a as b,i as c,u as n,s as o};
