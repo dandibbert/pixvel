@@ -1,18 +1,28 @@
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import Layout from './components/layout/Layout'
-import WelcomePage from './pages/WelcomePage'
-import TokenInputPage from './pages/TokenInputPage'
-import SearchPage from './pages/SearchPage'
-import ListPage from './pages/ListPage'
-import ReaderPage from './pages/ReaderPage'
-import HistoryPage from './pages/HistoryPage'
-import SeriesPage from './pages/SeriesPage'
-import AuthorPage from './pages/AuthorPage'
 import { useAuthStore } from './stores/authStore'
 
+const WelcomePage = lazy(() => import('./pages/WelcomePage'))
+const TokenInputPage = lazy(() => import('./pages/TokenInputPage'))
+const SearchPage = lazy(() => import('./pages/SearchPage'))
+const ListPage = lazy(() => import('./pages/ListPage'))
+const ReaderPage = lazy(() => import('./pages/ReaderPage'))
+const HistoryPage = lazy(() => import('./pages/HistoryPage'))
+const SeriesPage = lazy(() => import('./pages/SeriesPage'))
+const AuthorPage = lazy(() => import('./pages/AuthorPage'))
+
+function RouteFallback() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+    </div>
+  )
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, checkStatus } = useAuthStore()
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const checkStatus = useAuthStore((state) => state.checkStatus)
 
   useEffect(() => {
     checkStatus()
@@ -22,11 +32,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/" replace />
   }
 
-  return <>{children}</>
+  return <Suspense fallback={<RouteFallback />}>{children}</Suspense>
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, checkStatus } = useAuthStore()
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const checkStatus = useAuthStore((state) => state.checkStatus)
 
   useEffect(() => {
     checkStatus()
@@ -36,7 +47,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/history" replace />
   }
 
-  return <>{children}</>
+  return <Suspense fallback={<RouteFallback />}>{children}</Suspense>
 }
 
 const router = createBrowserRouter([

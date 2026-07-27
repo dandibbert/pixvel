@@ -95,13 +95,11 @@ export function buildDisplayKeywordMatchMap(
 ): NovelMatchMap {
   return mapItemsToObject(
     Object.entries(keywordMatchMap),
-    ([novelId, match]) => [
-      novelId,
-      {
-        ...match,
-        isBlocked: match.isBlocked && !revealedBlockedIds.has(novelId),
-      },
-    ],
+    ([novelId, match]) => {
+      const isBlocked = match.isBlocked && !revealedBlockedIds.has(novelId)
+      // Preserve reference when unchanged so memoized cards skip re-rendering
+      return [novelId, isBlocked === match.isBlocked ? match : { ...match, isBlocked }]
+    },
   )
 }
 

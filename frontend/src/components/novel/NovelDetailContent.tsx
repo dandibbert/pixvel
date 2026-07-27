@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import DOMPurify from 'dompurify'
 import { Novel, NovelDetail } from '../../types/novel'
 import { Locale } from '../../stores/localeStore'
@@ -36,9 +37,14 @@ export default function NovelDetailContent({
     novel,
     statsMode,
   })
-  const sanitizedDescription = DOMPurify.sanitize(normalizeDescriptionLinks(novel.description ?? ''), {
-    ADD_ATTR: ['target'],
-  })
+  // DOMParser round trip + sanitize are costly; only redo when the text changes
+  const sanitizedDescription = useMemo(
+    () =>
+      DOMPurify.sanitize(normalizeDescriptionLinks(novel.description ?? ''), {
+        ADD_ATTR: ['target'],
+      }),
+    [novel.description],
+  )
   const highlightClassName = 'px-0.5 rounded bg-primary/15 text-primary font-semibold'
 
   const renderHighlightedText = (text: string) => (

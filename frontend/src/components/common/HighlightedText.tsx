@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { splitHighlightedText } from '../../utils/textHighlight'
 
 interface HighlightedTextProps {
@@ -11,7 +12,11 @@ export default function HighlightedText({
   highlightWords,
   className,
 }: HighlightedTextProps) {
-  const segments = splitHighlightedText(text, highlightWords)
+  // Regex build + segment normalization is per-render hot on result grids
+  const segments = useMemo(
+    () => splitHighlightedText(text, highlightWords),
+    [text, highlightWords],
+  )
 
   if (segments.length === 0 || segments.every((segment) => !segment.isHighlighted)) {
     return <>{text}</>

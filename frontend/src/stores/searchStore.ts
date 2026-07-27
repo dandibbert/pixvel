@@ -60,7 +60,13 @@ interface SearchState {
 
 export const useSearchStore = create<SearchState>()(
   persist<SearchState, [], [], SearchPersistSnapshot>(
-    (set, get) => ({
+    (set, get) => {
+      // Guards against out-of-order responses: only the latest request may
+      // write results. loadMore is blocked while loading, and a new search
+      // supersedes any in-flight request, so one shared counter suffices.
+      let requestSeq = 0
+
+      return {
       query: '',
       filters: {
         page: 1,
@@ -120,16 +126,19 @@ export const useSearchStore = create<SearchState>()(
           state.addToHistory(request.historyEntry)
         }
 
+        const seq = ++requestSeq
         try {
           set(buildSearchLoadingState())
 
           const result = await api.get<SearchApiResult>('/novels/search', request.apiParams)
+          if (seq !== requestSeq) return
 
           set(buildSearchResultsWithFiltersState({
             result,
             filters: request.syncedFilters,
           }))
         } catch (error) {
+          if (seq !== requestSeq) return
           set(buildSearchErrorState(error, 'Search failed'))
         }
       },
@@ -139,6 +148,7 @@ export const useSearchStore = create<SearchState>()(
         if (!state.hasMore || state.isLoading) return
 
         const nextPage = state.page + 1
+        const seq = ++requestSeq
         try {
           set(buildSearchLoadingState())
           const result = await api.get<SearchApiResult>(
@@ -149,9 +159,14 @@ export const useSearchStore = create<SearchState>()(
               nextPage,
             }),
           )
+          if (seq !== requestSeq) return
 
-          set(buildSearchResultsState({ result, existingResults: state.results }))
+          // Read results at merge time, not the stale pre-await snapshot
+          set((currentState) =>
+            buildSearchResultsState({ result, existingResults: currentState.results })
+          )
         } catch (error) {
+          if (seq !== requestSeq) return
           set(buildSearchErrorState(error, 'Load more failed'))
         }
       },
@@ -174,7 +189,8 @@ export const useSearchStore = create<SearchState>()(
       clearResults: () => set(buildClearedSearchResultsState()),
 
       clearError: () => set(buildSearchClearErrorState()),
-    }),
+      }
+    },
     {
       name: 'search-cache-storage',
       partialize: buildSearchPersistSnapshot,

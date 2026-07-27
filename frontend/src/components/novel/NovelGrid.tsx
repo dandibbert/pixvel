@@ -28,24 +28,15 @@ export default function NovelGrid({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
-      {novels.map((novel) => {
-        const match = keywordMatchMap?.[novel.id]
-
-        return (
-          <NovelCard
-            key={novel.id}
-            novel={novel}
-            keywordMatch={match}
-            onRevealBlocked={onRevealBlocked}
-            onClick={() => {
-              if (match?.isBlocked) {
-                return
-              }
-              onNovelClick(novel)
-            }}
-          />
-        )
-      })}
+      {novels.map((novel) => (
+        <NovelCard
+          key={novel.id}
+          novel={novel}
+          keywordMatch={keywordMatchMap?.[novel.id]}
+          onRevealBlocked={onRevealBlocked}
+          onNovelClick={onNovelClick}
+        />
+      ))}
     </div>
   )
 }

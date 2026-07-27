@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useURLState } from '../hooks/useURLState'
 import { useNovelPreview } from '../hooks/useNovelPreview'
 import { useSearchStore } from '../stores/searchStore'
@@ -39,6 +40,8 @@ export default function SearchPage() {
     target: '',
   })
 
+  // useShallow: subscribe only to the fields this page reads, so unrelated
+  // store writes (e.g. history mutations) don't re-render the whole page
   const {
     results,
     total,
@@ -56,7 +59,26 @@ export default function SearchPage() {
     removeFromHistory,
     clearHistory,
     showMoreResults,
-  } = useSearchStore()
+  } = useSearchStore(
+    useShallow((state) => ({
+      results: state.results,
+      total: state.total,
+      totalPages: state.totalPages,
+      visibleResultCount: state.visibleResultCount,
+      isLoading: state.isLoading,
+      error: state.error,
+      searchHistory: state.searchHistory,
+      query: state.query,
+      filters: state.filters,
+      page: state.page,
+      setQuery: state.setQuery,
+      search: state.search,
+      clearError: state.clearError,
+      removeFromHistory: state.removeFromHistory,
+      clearHistory: state.clearHistory,
+      showMoreResults: state.showMoreResults,
+    })),
+  )
   const { blockedWords, highlightWords, revealedBlockedIds, revealBlockedId } =
     useSearchKeywordRules()
 

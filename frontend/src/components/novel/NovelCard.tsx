@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '../../i18n/useI18n'
 import { Novel } from '../../types/novel'
@@ -10,14 +11,19 @@ import NovelCardTags from './NovelCardTags'
 
 interface NovelCardProps {
   novel: Novel
-  onClick: () => void
+  onNovelClick: (novel: Novel) => void
   keywordMatch?: NovelKeywordMatchResult
   onRevealBlocked?: (novelId: string) => void
 }
 
-export default function NovelCard({
+/**
+ * Memoized: cards render in grids of up to 60; stable props (novel identity,
+ * memoized keywordMatch map, useCallback'd handlers) let unrelated page state
+ * changes skip re-rendering every card.
+ */
+export default memo(function NovelCard({
   novel,
-  onClick,
+  onNovelClick,
   keywordMatch,
   onRevealBlocked,
 }: NovelCardProps) {
@@ -44,7 +50,10 @@ export default function NovelCard({
       <button
         type="button"
         aria-label={novel.title}
-        onClick={onClick}
+        onClick={() => {
+          if (isBlockedForDisplay) return
+          onNovelClick(novel)
+        }}
         disabled={isBlockedForDisplay}
         className="absolute inset-0 z-[1] rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
       />
@@ -140,4 +149,4 @@ export default function NovelCard({
       )}
     </div>
   )
-}
+})

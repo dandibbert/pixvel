@@ -20,7 +20,7 @@ export default function TokenInputPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { setupAuth } = useAuthStore();
+  const setupAuth = useAuthStore((state) => state.setupAuth);
   const isSubmitDisabled = isTokenSubmitDisabled({
     isLoading: loading,
     refreshToken,

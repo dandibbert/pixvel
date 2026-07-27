@@ -32,7 +32,7 @@ describe('NovelCard', () => {
   it('keeps the synopsis visible on mobile', () => {
     const { container, unmount } = renderReactElement(
       <MemoryRouter>
-        <NovelCard novel={novel} onClick={vi.fn()} />
+        <NovelCard novel={novel} onNovelClick={vi.fn()} />
       </MemoryRouter>,
     )
     const content = container.querySelector('[data-testid="novel-card-content"]')
@@ -50,7 +50,7 @@ describe('NovelCard', () => {
   it('does not force mobile cards or their content to full height', () => {
     const { container, unmount } = renderReactElement(
       <MemoryRouter>
-        <NovelCard novel={novel} onClick={vi.fn()} />
+        <NovelCard novel={novel} onNovelClick={vi.fn()} />
       </MemoryRouter>,
     )
     const card = container.firstElementChild
@@ -67,7 +67,7 @@ describe('NovelCard', () => {
   it('does not reserve an empty series row for standalone novels', () => {
     const { container, unmount } = renderReactElement(
       <MemoryRouter>
-        <NovelCard novel={novel} onClick={vi.fn()} />
+        <NovelCard novel={novel} onNovelClick={vi.fn()} />
       </MemoryRouter>,
     )
 
