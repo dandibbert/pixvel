@@ -34,7 +34,7 @@ Pixvel 是一个面向 Pixiv Novel 的 Web 阅读应用，当前实现以 **refr
 
 - React 18 + TypeScript
 - Vite
-- React Router v6
+- React Router v7
 - Zustand
 - Tailwind CSS
 
@@ -43,7 +43,7 @@ Pixvel 是一个面向 Pixiv Novel 的 Web 阅读应用，当前实现以 **refr
 ### 1. 环境要求
 
 - Deno 2.x
-- Node.js 18+
+- Node.js 20+
 - npm
 
 ### 2. 配置环境变量

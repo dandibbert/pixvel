@@ -148,8 +148,10 @@ Deno.test("novel route model builds user and series list requests from route par
     page: "2",
   });
 
+  assertEquals(userRequest.id, 123);
   assertEquals(userRequest.page, 3);
   assertEquals(userRequest.params.toString(), "user_id=123&offset=60");
+  assertEquals(seriesRequest.id, 456);
   assertEquals(seriesRequest.page, 2);
   assertEquals(seriesRequest.params.toString(), "series_id=456&offset=30");
 });
