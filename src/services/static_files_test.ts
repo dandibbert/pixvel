@@ -10,6 +10,14 @@ async function readText(response: Response) {
   return await response.text();
 }
 
+Deno.test("deployment config does not exclude frontend build assets", async () => {
+  const config = JSON.parse(await Deno.readTextFile("./deno.json"));
+
+  assertEquals(config.exclude, undefined);
+  assertEquals(config.fmt.exclude.includes("frontend"), true);
+  assertEquals(config.lint.exclude.includes("frontend"), true);
+});
+
 Deno.test("resolveStaticAssetPath maps app paths into frontend dist", () => {
   assertEquals(resolveStaticAssetPath("/", "./frontend/dist"), "./frontend/dist/index.html");
   assertEquals(

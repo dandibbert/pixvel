@@ -1,17 +1,18 @@
 {
   "unstable": ["kv"],
-  "exclude": ["frontend"],
   "tasks": {
     "dev": "deno run --allow-net --allow-env --allow-read --allow-write --unstable-kv --watch src/index.ts",
     "start": "deno run --allow-net --allow-env --allow-read --allow-write --unstable-kv src/index.ts",
     "deploy": "bash scripts/deploy.sh"
   },
   "lint": {
+    "exclude": ["frontend"],
     "rules": {
       "tags": ["recommended"]
     }
   },
   "fmt": {
+    "exclude": ["frontend"],
     "useTabs": false,
     "lineWidth": 100,
     "indentWidth": 2,
