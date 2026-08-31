@@ -10,6 +10,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Raised the frontend build requirement to Node.js 20 or newer for React Router 7.
+- Search pages now render every novel returned by the current API page immediately instead of revealing results ten at a time.
+- Author works now use numbered, URL-backed pagination with a bounded local cache, so refreshes restore the current page without refetching fresh cached data.
 
 ### Fixed
 - Reader page layout: when a page has very little text, bottom page navigation no longer floats upward; it stays at the viewport bottom.

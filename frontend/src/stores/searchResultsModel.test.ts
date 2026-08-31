@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { Novel } from '../types/search'
 import {
-  buildNextVisibleResultCount,
   buildClearedSearchResultsState,
   buildSearchResultsState,
   buildSearchResultsWithFiltersState,
-  SEARCH_RESULT_BATCH_SIZE,
 } from './searchResultsModel'
 
 function createNovel(id: string): Novel {
@@ -28,24 +26,19 @@ function createNovel(id: string): Novel {
 }
 
 describe('searchResultsModel', () => {
-  it('reveals backend page results in batches of ten', () => {
-    expect(SEARCH_RESULT_BATCH_SIZE).toBe(10)
-    expect(buildNextVisibleResultCount({ current: 10, total: 30 })).toBe(20)
-    expect(buildNextVisibleResultCount({ current: 20, total: 23 })).toBe(23)
-    expect(buildNextVisibleResultCount({ current: 23, total: 23 })).toBe(23)
-
+  it('keeps every novel returned by the backend page visible', () => {
     const novels = Array.from({ length: 30 }, (_, index) => createNovel(String(index + 1)))
+    const state = buildSearchResultsState({
+      result: {
+        novels,
+        total: 30,
+        page: 1,
+        totalPages: 1,
+      },
+    })
 
-    expect(
-      buildSearchResultsState({
-        result: {
-          novels,
-          total: 30,
-          page: 1,
-          totalPages: 1,
-        },
-      }).visibleResultCount,
-    ).toBe(10)
+    expect(state.results).toHaveLength(30)
+    expect(state).not.toHaveProperty('visibleResultCount')
   })
 
   it('builds replacement and appended result states with derived hasMore', () => {
@@ -67,7 +60,6 @@ describe('searchResultsModel', () => {
       page: 2,
       totalPages: 3,
       hasMore: true,
-      visibleResultCount: 1,
       isLoading: false,
     })
 
@@ -87,7 +79,6 @@ describe('searchResultsModel', () => {
       page: 3,
       totalPages: 3,
       hasMore: false,
-      visibleResultCount: 2,
       isLoading: false,
     })
   })
@@ -117,7 +108,6 @@ describe('searchResultsModel', () => {
       page: 2,
       totalPages: 3,
       hasMore: true,
-      visibleResultCount: 1,
       isLoading: false,
       filters: {
         page: 1,
@@ -136,7 +126,6 @@ describe('searchResultsModel', () => {
       page: 1,
       totalPages: 1,
       hasMore: false,
-      visibleResultCount: 0,
     })
   })
 })

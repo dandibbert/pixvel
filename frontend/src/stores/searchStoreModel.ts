@@ -11,7 +11,6 @@ export type SearchPersistSnapshot = {
   page: number
   totalPages: number
   hasMore: boolean
-  visibleResultCount: number
 }
 
 export function buildSearchLoadingState() {
@@ -58,6 +57,5 @@ export function buildSearchPersistSnapshot<State extends SearchPersistSnapshot>(
     page: state.page,
     totalPages: state.totalPages,
     hasMore: state.hasMore,
-    visibleResultCount: state.visibleResultCount,
   }
 }

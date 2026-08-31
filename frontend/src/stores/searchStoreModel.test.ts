@@ -75,7 +75,6 @@ describe('searchStoreModel', () => {
         total: 25,
         page: 2,
         totalPages: 3,
-        visibleResultCount: 10,
         limit: 50,
         hasMore: true,
         isLoading: true,
@@ -95,7 +94,6 @@ describe('searchStoreModel', () => {
       page: 2,
       totalPages: 3,
       hasMore: true,
-      visibleResultCount: 10,
     })
   })
 

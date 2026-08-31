@@ -5,10 +5,8 @@ import { api } from '../utils/api'
 import { buildSearchFiltersState } from './searchFiltersModel'
 import {
   buildClearedSearchResultsState,
-  buildNextVisibleResultCount,
   buildSearchResultsState,
   buildSearchResultsWithFiltersState,
-  SEARCH_RESULT_BATCH_SIZE,
   type SearchApiResult,
 } from './searchResultsModel'
 import {
@@ -39,7 +37,6 @@ interface SearchState {
   totalPages: number
   limit: number
   hasMore: boolean
-  visibleResultCount: number
   isLoading: boolean
   error: string | null
 
@@ -52,7 +49,6 @@ interface SearchState {
   setFilters: (filters: Partial<SearchParams>) => void
   search: (params?: Partial<SearchParams>) => Promise<void>
   loadMore: () => Promise<void>
-  showMoreResults: () => void
   setPage: (page: number) => void
   clearResults: () => void
   clearError: () => void
@@ -79,7 +75,6 @@ export const useSearchStore = create<SearchState>()(
       totalPages: 1,
       limit: 20,
       hasMore: false,
-      visibleResultCount: 0,
       isLoading: false,
       error: null,
       searchHistory: [],
@@ -170,19 +165,6 @@ export const useSearchStore = create<SearchState>()(
           set(buildSearchErrorState(error, 'Load more failed'))
         }
       },
-
-      showMoreResults: () =>
-        set((state) => {
-          const currentVisibleResultCount = state.visibleResultCount ||
-            Math.min(SEARCH_RESULT_BATCH_SIZE, state.results.length)
-
-          return {
-            visibleResultCount: buildNextVisibleResultCount({
-              current: currentVisibleResultCount,
-              total: state.results.length,
-            }),
-          }
-        }),
 
       setPage: (page) => set(buildSearchPageState(page)),
 

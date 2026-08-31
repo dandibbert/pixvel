@@ -46,7 +46,6 @@ export default function SearchPage() {
     results,
     total,
     totalPages,
-    visibleResultCount,
     isLoading,
     error,
     searchHistory,
@@ -58,13 +57,11 @@ export default function SearchPage() {
     clearError,
     removeFromHistory,
     clearHistory,
-    showMoreResults,
   } = useSearchStore(
     useShallow((state) => ({
       results: state.results,
       total: state.total,
       totalPages: state.totalPages,
-      visibleResultCount: state.visibleResultCount,
       isLoading: state.isLoading,
       error: state.error,
       searchHistory: state.searchHistory,
@@ -76,7 +73,6 @@ export default function SearchPage() {
       clearError: state.clearError,
       removeFromHistory: state.removeFromHistory,
       clearHistory: state.clearHistory,
-      showMoreResults: state.showMoreResults,
     })),
   )
   const { blockedWords, highlightWords, revealedBlockedIds, revealBlockedId } =
@@ -246,13 +242,11 @@ export default function SearchPage() {
             total={total}
             totalPages={totalPages}
             currentPage={urlState.page}
-            visibleResultCount={visibleResultCount}
             hasSearchQuery={Boolean(urlState.q)}
             keywordMatchMap={displayKeywordMatchMap}
             onNovelClick={novelPreview.openPreview}
             onRevealBlocked={handleRevealBlocked}
             onPageChange={handlePageChange}
-            onShowMoreResults={showMoreResults}
           />
         </div>
       </div>

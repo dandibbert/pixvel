@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  clickButtonContainingText,
-  renderReactElement,
-} from '../../test/domTestUtils'
+import { clickButtonContainingText, renderReactElement } from '../../test/domTestUtils'
 import type { Novel, NovelKeywordMatchResult } from '../../types/search'
 import SearchResultsSection from './SearchResultsSection'
 
@@ -10,13 +7,6 @@ const translations: Record<string, string> = {
   'search.loading': '搜索中',
   'search.resultsFoundPrefix': '找到',
   'search.resultsFoundSuffix': '个结果',
-  'search.resultsShowingPrefix': '已显示',
-  'search.resultsShowingSuffix': '篇',
-  'search.resultsRemainingPrefix': '本页还有',
-  'search.resultsRemainingSuffix': '篇',
-  'search.resultsLoadMorePrefix': '继续加载',
-  'search.resultsLoadMoreSuffix': '篇',
-  'search.resultsPageComplete': '加载完本页后显示分页',
   'search.emptyNoResults': '没有结果',
   'search.emptyStartSearch': '开始搜索',
 }
@@ -95,7 +85,6 @@ function renderSearchResultsSection(
   const onNovelClick = vi.fn()
   const onRevealBlocked = vi.fn()
   const onPageChange = vi.fn()
-  const onShowMoreResults = vi.fn()
 
   return {
     ...renderReactElement(
@@ -105,20 +94,17 @@ function renderSearchResultsSection(
         total={0}
         totalPages={1}
         currentPage={1}
-        visibleResultCount={10}
         hasSearchQuery={false}
         keywordMatchMap={{}}
         onNovelClick={onNovelClick}
         onRevealBlocked={onRevealBlocked}
         onPageChange={onPageChange}
-        onShowMoreResults={onShowMoreResults}
         {...props}
       />,
     ),
     onNovelClick,
     onRevealBlocked,
     onPageChange,
-    onShowMoreResults,
   }
 }
 
@@ -171,27 +157,22 @@ describe('SearchResultsSection', () => {
     unmount()
   })
 
-  it('reveals one backend page ten novels at a time before showing pagination', () => {
+  it('shows every novel returned by the backend page and pagination immediately', () => {
     const novels = Array.from({ length: 30 }, (_, index) => createNovel(String(index + 1)))
-    const { container, unmount, onShowMoreResults } = renderSearchResultsSection({
+    const { container, unmount } = renderSearchResultsSection({
       results: novels,
       total: 128,
       totalPages: 5,
       currentPage: 1,
-      visibleResultCount: 10,
     })
 
     const openButtons = Array.from(
       container.querySelectorAll('[data-testid="novel-grid"] button'),
     ).filter((button) => button.textContent?.startsWith('open '))
 
-    expect(openButtons).toHaveLength(10)
-    expect(container.textContent).toContain('已显示 10 / 30 篇')
-    expect(container.textContent).toContain('本页还有 20 篇')
-    expect(container.textContent).not.toContain('page 1 / 5')
-
-    clickButtonContainingText(container, '继续加载 10 篇')
-    expect(onShowMoreResults).toHaveBeenCalledTimes(1)
+    expect(openButtons).toHaveLength(30)
+    expect(container.textContent).not.toContain('继续加载')
+    expect(container.textContent).toContain('page 1 / 5')
 
     unmount()
   })
@@ -203,7 +184,6 @@ describe('SearchResultsSection', () => {
       total: 128,
       totalPages: 5,
       currentPage: 2,
-      visibleResultCount: 12,
     })
 
     const openButtons = Array.from(

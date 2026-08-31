@@ -25,6 +25,22 @@ vi.mock('../components/novel/NovelGrid', () => ({
   },
 }))
 
+vi.mock('../components/common/Pagination', () => ({
+  default: ({
+    currentPage,
+    totalPages,
+    onPageChange,
+  }: {
+    currentPage: number
+    totalPages: number
+    onPageChange: (page: number) => void
+  }) => (
+    <button type="button" onClick={() => onPageChange(currentPage + 1)}>
+      page {currentPage} / {totalPages}
+    </button>
+  ),
+}))
+
 const { default: PagedNovelCollectionPage } = await import('./PagedNovelCollectionPage')
 
 function createNovel(id: string): Novel {
@@ -123,6 +139,23 @@ describe('PagedNovelCollectionPage', () => {
 
     expect(container.textContent).toContain('加载失败')
     expect(loadMoreButton.disabled).toBe(true)
+
+    unmount()
+  })
+
+  it('uses numbered pagination instead of load more when pagination is provided', () => {
+    const onPageChange = vi.fn()
+    const { container, unmount } = renderPagedNovelCollectionPage({
+      pagination: {
+        currentPage: 2,
+        totalPages: 3,
+        onPageChange,
+      },
+    })
+
+    expect(container.textContent).not.toContain('加载更多')
+    clickButtonContainingText(container, 'page 2 / 3')
+    expect(onPageChange).toHaveBeenCalledWith(3)
 
     unmount()
   })

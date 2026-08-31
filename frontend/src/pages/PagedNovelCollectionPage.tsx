@@ -1,4 +1,5 @@
 import { EmptyPageState, LoadingPageState } from '../components/common/PageState'
+import Pagination from '../components/common/Pagination'
 import NovelGrid from '../components/novel/NovelGrid'
 import type { Novel } from '../types/novel'
 
@@ -9,12 +10,17 @@ interface PagedNovelCollectionPageProps {
   error: string | null
   novels: Novel[]
   isLoading: boolean
-  hasMore: boolean
+  hasMore?: boolean
   loadingLabel: string
-  loadMoreLabel: string
+  loadMoreLabel?: string
   emptyLabel: string
   onNovelClick: (novel: Novel) => void
-  onLoadMore: () => void
+  onLoadMore?: () => void
+  pagination?: {
+    currentPage: number
+    totalPages: number
+    onPageChange: (page: number) => void
+  }
 }
 
 export default function PagedNovelCollectionPage({
@@ -30,6 +36,7 @@ export default function PagedNovelCollectionPage({
   emptyLabel,
   onNovelClick,
   onLoadMore,
+  pagination,
 }: PagedNovelCollectionPageProps) {
   return (
     <div className="min-h-screen">
@@ -58,7 +65,7 @@ export default function PagedNovelCollectionPage({
           ) : novels.length > 0 ? (
             <>
               <NovelGrid novels={novels} onNovelClick={onNovelClick} />
-              {hasMore && (
+              {!pagination && hasMore && onLoadMore && loadMoreLabel ? (
                 <div className="mt-8 md:mt-12 flex justify-center">
                   <button
                     onClick={onLoadMore}
@@ -68,10 +75,15 @@ export default function PagedNovelCollectionPage({
                     {isLoading ? loadingLabel : loadMoreLabel}
                   </button>
                 </div>
-              )}
+              ) : null}
             </>
           ) : (
             <EmptyPageState label={emptyLabel} icon="book" />
+          )}
+          {pagination && pagination.totalPages > 1 && !(isLoading && novels.length === 0) && (
+            <div className="mt-12 md:mt-16">
+              <Pagination {...pagination} />
+            </div>
           )}
         </div>
       </div>

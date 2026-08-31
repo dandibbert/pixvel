@@ -69,7 +69,6 @@ function resetSearchStore() {
     totalPages: 1,
     limit: 20,
     hasMore: false,
-    visibleResultCount: 0,
     isLoading: false,
     error: null,
     searchHistory: [],
@@ -113,7 +112,6 @@ describe('SearchPage', () => {
       page: 1,
       totalPages: 2,
       hasMore: true,
-      visibleResultCount: 1,
     })
 
     const { container, unmount } = renderSearchPage('/search?q=五悠&page=1&sort=date_desc&target=keyword')
@@ -124,7 +122,7 @@ describe('SearchPage', () => {
     unmount()
   })
 
-  it('reveals cached backend-page results through the persisted ten-item action', () => {
+  it('shows every cached result returned by the backend page', () => {
     const results = Array.from({ length: 12 }, (_, index) => createNovel(String(index + 1)))
 
     useSearchStore.setState({
@@ -140,13 +138,11 @@ describe('SearchPage', () => {
       page: 1,
       totalPages: 1,
       hasMore: false,
-      visibleResultCount: 10,
     })
 
     const { container, unmount } = renderSearchPage('/search?q=五悠&page=1&sort=date_desc&target=keyword')
 
-    expect(container.textContent).not.toContain('Novel 11')
-    clickButtonContainingText(container, '继续加载 2 篇')
+    expect(container.textContent).not.toContain('继续加载')
     expect(container.textContent).toContain('Novel 11')
 
     unmount()
