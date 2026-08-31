@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pixvel 搜索 UI 对照 · 5.9 线上 vs 未上线</title>
+  <style>
+    :root {
+      --primary: #0096fa;
+      --primary-soft: rgba(0, 150, 250, 0.12);
+      --muted: #f3f4f6;
+      --foreground: #111827;
+      --border: #e5e7eb;
+      --white: #ffffff;
+      --page: #eef2f6;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      font-family: Outfit, "PingFang SC", "Noto Sans SC", "Hiragino Sans GB", sans-serif;
+      background: var(--page);
+      color: var(--foreground);
+      min-height: 100vh;
+    }
+
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+
+    .page {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px 16px 64px;
+    }
+
+    .hero {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: 0 12px 40px rgba(17, 24, 39, 0.05);
+    }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 8px 0 10px;
+      font-size: clamp(28px, 5vw, 42px);
+      letter-spacing: -0.04em;
+    }
+
+    .lede {
+      margin: 0 0 20px;
+      max-width: 720px;
+      color: rgba(17, 24, 39, 0.62);
+      line-height: 1.6;
+      font-weight: 500;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .seg {
+      display: inline-flex;
+      background: var(--muted);
+      border-radius: 12px;
+      padding: 4px;
+    }
+
+    .seg button {
+      border: 0;
+      background: transparent;
+      min-height: 40px;
+      padding: 0 14px;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 800;
+      color: rgba(17, 24, 39, 0.45);
+    }
+
+    .seg button.active {
+      background: var(--white);
+      color: var(--primary);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .chip {
+      border: 1px solid var(--border);
+      background: var(--white);
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(17, 24, 39, 0.7);
+    }
+
+    .chip b { color: var(--primary); }
+
+    .stage {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .col {
+      background: #dbe4ee;
+      border-radius: 24px;
+      padding: 16px;
+      min-width: 0;
+    }
+
+    .col-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .badge.old { background: #111827; color: #fff; }
+    .badge.new { background: var(--primary); color: #fff; }
+
+    .col-note {
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(17, 24, 39, 0.5);
+    }
+
+    .device {
+      margin: 0 auto;
+      background: #111;
+      border-radius: 36px;
+      padding: 12px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+    }
+
+    .device.phone { width: min(100%, 390px); }
+    .device.desktop { width: 100%; }
+
+    .screen {
+      background: #fff;
+      border-radius: 26px;
+      overflow: hidden;
+      height: 760px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .device.desktop .screen {
+      height: 820px;
+      border-radius: 18px;
+    }
+
+    .app-header {
+      flex: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 56px;
+      padding: 0 14px;
+      border-bottom: 1px solid rgba(229, 231, 235, 0.8);
+      background: #fff;
+    }
+
+    .logo { color: var(--primary); font-size: 20px; font-weight: 800; }
+
+    .nav-pill {
+      display: flex;
+      background: rgba(243, 244, 246, 0.8);
+      border: 1px solid rgba(229, 231, 235, 0.8);
+      border-radius: 10px;
+      padding: 3px;
+    }
+
+    .nav-pill span {
+      min-height: 36px;
+      padding: 0 10px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--foreground);
+    }
+
+    .nav-pill .on {
+      background: #fff;
+      color: var(--primary);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+
+    .header-right { display: flex; align-items: center; gap: 8px; }
+
+    .rules-old {
+      min-height: 36px;
+      padding: 0 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(229, 231, 235, 0.8);
+      background: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .count-old {
+      display: inline-flex;
+      margin-left: 4px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-size: 10px;
+    }
+
+    .lang {
+      width: 36px;
+      height: 36px;
+      border: 2px solid var(--primary);
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-size: 10px;
+      font-weight: 900;
+    }
+
+    .scroll { flex: 1; overflow: auto; background: #fff; }
+
+    .hero-old {
+      background: var(--primary);
+      color: #fff;
+      padding: 48px 16px 64px;
+      text-align: center;
+    }
+
+    .hero-new {
+      background: #fff;
+      color: var(--foreground);
+      padding: 20px 16px 12px;
+    }
+
+    .hero-old h2, .hero-new h2 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      letter-spacing: -0.03em;
+    }
+
+    .hero-old p, .hero-new p {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .hero-old p { color: rgba(255, 255, 255, 0.8); }
+    .hero-new p { color: rgba(17, 24, 39, 0.55); }
+
+    .desktop-hero {
+      background: var(--primary);
+      color: #fff;
+      padding: 48px 24px 80px;
+    }
+
+    .desktop-hero h2 { margin: 0 0 8px; font-size: 40px; }
+    .desktop-hero p { margin: 0; color: rgba(255,255,255,.8); }
+
+    .card-old {
+      margin: -40px 16px 20px;
+      background: #fff;
+      border: 1px solid rgba(229, 231, 235, 0.5);
+      border-radius: 16px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.06);
+      padding: 16px;
+    }
+
+    .card-new { padding: 0 16px 20px; }
+
+    .desktop-card {
+      margin: -48px 24px 24px;
+      background: #fff;
+      border: 1px solid rgba(229, 231, 235, 0.5);
+      border-radius: 16px;
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.06);
+      padding: 28px;
+    }
+
+    .search {
+      position: relative;
+      margin-bottom: 12px;
+    }
+
+    .search input {
+      width: 100%;
+      height: 56px;
+      border: 0;
+      border-radius: 16px;
+      background: var(--muted);
+      padding: 0 92px 0 44px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .search .lens {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: rgba(17, 24, 39, 0.28);
+      font-weight: 900;
+    }
+
+    .search .go {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 44px;
+      padding: 0 16px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 900;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .toolbar.old { flex-direction: column; align-items: stretch; }
+
+    .filter-btn, .rules-new {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 0 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .filter-btn {
+      border: 0;
+      background: var(--muted);
+      color: rgba(17, 24, 39, 0.6);
+    }
+
+    .rules-new {
+      border: 1px solid rgba(0, 150, 250, 0.35);
+      background: #fff;
+      color: var(--primary);
+    }
+
+    .rules-new .n {
+      min-width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      background: var(--primary);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+    }
+
+    .sort-pills {
+      display: flex;
+      gap: 4px;
+      background: var(--muted);
+      border-radius: 10px;
+      padding: 5px;
+    }
+
+    .sort-pills span {
+      min-height: 36px;
+      padding: 0 10px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 900;
+      color: rgba(17, 24, 39, 0.4);
+    }
+
+    .sort-pills .on { background: var(--primary); color: #fff; }
+
+    .sort-select {
+      appearance: none;
+      min-height: 44px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      padding: 0 28px 0 12px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .found {
+      font-size: 12px;
+      font-weight: 800;
+      color: rgba(17, 24, 39, 0.45);
+      margin-bottom: 10px;
+    }
+
+    .grid { display: grid; gap: 10px; }
+    .grid.desktop { grid-template-columns: 1fr 1fr; }
+
+    .novel {
+      border: 1px solid rgba(229, 231, 235, 0.7);
+      border-radius: 14px;
+      padding: 12px;
+      background: #fff;
+    }
+
+    .novel.equal { min-height: 178px; display: flex; flex-direction: column; }
+
+    .series {
+      display: inline-block;
+      max-width: 70%;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(0, 150, 250, 0.9);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .title { font-size: 14px; font-weight: 800; line-height: 1.3; margin-bottom: 4px; }
+    .author { color: rgba(0, 150, 250, 0.8); font-size: 11px; font-weight: 700; margin-bottom: 6px; }
+
+    .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+    .tags span {
+      background: var(--muted);
+      color: rgba(17, 24, 39, 0.55);
+      border-radius: 6px;
+      padding: 2px 6px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .desc {
+      color: rgba(17, 24, 39, 0.5);
+      font-size: 12px;
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+
+    .novel.equal .desc { min-height: 36px; }
+
+    .meta {
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid var(--muted);
+      padding-top: 8px;
+      color: rgba(17, 24, 39, 0.4);
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .novel.equal .meta { margin-top: auto; }
+
+    .pager {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 16px;
+    }
+
+    .pager span {
+      min-width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .pager .on { background: var(--primary); color: #fff; }
+
+    .more {
+      margin-top: 14px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      text-align: center;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+    }
+
+    .more .stat { font-size: 14px; font-weight: 900; }
+    .more .left { color: rgba(17, 24, 39, 0.45); font-size: 12px; font-weight: 700; margin-top: 4px; }
+
+    .bar {
+      height: 6px;
+      background: var(--muted);
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 12px 0;
+    }
+
+    .bar i {
+      display: block;
+      height: 100%;
+      background: var(--primary);
+      border-radius: inherit;
+    }
+
+    .more button {
+      width: 100%;
+      min-height: 48px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 900;
+    }
+
+    .more .hint {
+      margin-top: 8px;
+      font-size: 10px;
+      font-weight: 700;
+      color: rgba(17, 24, 39, 0.35);
+    }
+
+    .drawer {
+      display: none;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 14px;
+      background: #fff;
+    }
+
+    .drawer.open { display: block; }
+
+    .drawer h3 { margin: 0 0 10px; font-size: 16px; }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin: 8px 0 12px;
+    }
+
+    .preset-grid button {
+      min-height: 40px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      color: rgba(17, 24, 39, 0.6);
+    }
+
+    .preset-grid button.on {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .field {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 10px;
+      font-weight: 800;
+      color: rgba(17, 24, 39, 0.45);
+      letter-spacing: 0.08em;
+    }
+
+    .field input {
+      width: 100%;
+      min-height: 44px;
+      margin-top: 6px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0 10px;
+      font-weight: 700;
+    }
+
+    .sticky-actions {
+      display: flex;
+      gap: 8px;
+      position: sticky;
+      bottom: 0;
+      background: #fff;
+      padding-top: 10px;
+    }
+
+    .sticky-actions button {
+      min-height: 44px;
+      border: 0;
+      border-radius: 10px;
+      font-weight: 900;
+      font-size: 12px;
+    }
+
+    .sticky-actions .reset { flex: 1; background: var(--muted); color: rgba(17,24,39,.55); }
+    .sticky-actions .apply { flex: 2; background: var(--primary); color: #fff; }
+
+    .callout {
+      margin-top: 22px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .note {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .note h3 { margin: 0 0 8px; font-size: 15px; }
+    .note p { margin: 0; color: rgba(17, 24, 39, 0.6); font-size: 13px; line-height: 1.55; }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 980px) {
+      .stage, .callout { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <div class="kicker">Pixvel · 部署对照</div>
+      <h1>5.9 之后确实有 UI 变更</h1>
+      <p class="lede">
+        阅读器、登录、历史、收藏页几乎没换皮。看得见的变化集中在<strong>搜索页</strong>：
+        移动端去蓝底、关键词规则入口搬家、筛选加预设、结果先露出 10 条。
+        下面两台机器是按真实组件结构画的示意，可以点筛选、继续加载和关键词规则。
+      </p>
+      <div class="controls">
+        <div class="seg" role="tablist" aria-label="视口">
+          <button type="button" class="active" data-viewport="phone">手机</button>
+          <button type="button" data-viewport="desktop">桌面</button>
+        </div>
+      </div>
+      <div class="chips">
+        <span class="chip"><b>1</b> Header 不再放「规则」</span>
+        <span class="chip"><b>2</b> 手机搜索页去蓝底、去白卡片</span>
+        <span class="chip"><b>3</b> 排序改成下拉</span>
+        <span class="chip"><b>4</b> 日期 / 收藏预设</span>
+        <span class="chip"><b>5</b> 结果 10 条一批</span>
+        <span class="chip"><b>6</b> 卡片不再强制等高</span>
+      </div>
+    </section>
+
+    <div class="stage">
+      <section class="col">
+        <div class="col-head">
+          <span class="badge old">5.9 线上</span>
+          <span class="col-note">c402d2b · 2026-05-09</span>
+        </div>
+        <div class="device phone" data-device="old">
+          <div class="screen" id="old-screen"></div>
+        </div>
+      </section>
+      <section class="col">
+        <div class="col-head">
+          <span class="badge new">未上线</span>
+          <span class="col-note">f1dad7b · 2026-07-14</span>
+        </div>
+        <div class="device phone" data-device="new">
+          <div class="screen" id="new-screen"></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="callout">
+      <article class="note">
+        <h3>会改使用习惯的</h3>
+        <p>原来一页 30 条直接铺开，下面就能翻页。新版先露出 10 条，要点「继续加载」两次才看得到分页。关键词规则从顶栏挪到搜索工具栏。</p>
+      </article>
+      <article class="note">
+        <h3>主要方便手机填筛选</h3>
+        <p>日期不再只靠原生日历：近 7 / 30 / 180 / 365 天一键选，也可以直接敲 YYYY/MM/DD。收藏数同样有 100+ 到 10,000+ 预设。筛选底部的重置 / 应用会粘在抽屉底部。</p>
+      </article>
+      <article class="note">
+        <h3>桌面变化更小</h3>
+        <p>桌面头图仍是蓝底大标题，排序仍是三段按钮。差别主要是工具栏多了「关键词规则」，以及结果区和筛选抽屉跟手机同一套新交互。</p>
+      </article>
+    </section>
+  </div>
+
+  <script>
+    const NOVELS = [
+      { title: "雨停之后再告白", author: "白夜灯", series: "雨季三部曲", tags: ["恋爱", "日常"], desc: "气象台说今晚雨会停。他站在便利店檐下，把第二把伞递了过去。", bm: 1280, words: 42000, pages: 18 },
+      { title: "图书馆闭馆铃声", author: "纸舟", series: "", tags: ["青春", "校园"], desc: "闭馆前十分钟，她总会把那本没人借的书放回原位。", bm: 860, words: 21000, pages: 9 },
+      { title: "东京的最后一班电车", author: "南风", series: "夜行列车", tags: ["都市", "治愈"], desc: "末班车只剩他们对坐。窗外广告牌一闪一闪，像没说完的话。", bm: 3420, words: 58000, pages: 24 },
+      { title: "猫会记得门牌号", author: "三月野", series: "", tags: ["奇幻", "治愈"], desc: "流浪猫只认得那扇会漏出咖喱味道的门。", bm: 540, words: 16000, pages: 7 },
+      { title: "没有回信的夏天", author: "灯塔", series: "未寄出的信", tags: ["恋爱", "成长"], desc: "明信片写了又撕，最后只寄出一张空白的海。", bm: 2100, words: 35000, pages: 15 },
+      { title: "便利店夜班同事", author: "汽水", series: "", tags: ["日常", "职场"], desc: "凌晨三点补货时，他才知道对方也在攒钱离开这座城。", bm: 990, words: 19000, pages: 8 },
+    ];
+
+    const state = {
+      viewport: "phone",
+      visible: 10,
+      filterOpen: false,
+      rulesOpen: false,
+      datePreset: "anytime",
+      bookmarkPreset: 0,
+    };
+
+    function novelCard(novel, equal) {
+      return `
+        <article class="novel ${equal ? "equal" : ""}">
+          ${novel.series ? `<div class="series">系列: ${novel.series}</div>` : ""}
+          <div class="title">${novel.title}</div>
+          <div class="author">${novel.author}</div>
+          <div class="tags">${novel.tags.map((tag) => `<span>${tag}</span>`).join("")}</div>
+          <div class="desc">${novel.desc}</div>
+          <div class="meta"><span>♥ ${novel.bm.toLocaleString()} · ${novel.words.toLocaleString()} 字</span><span>${novel.pages}P</span></div>
+        </article>
+      `;
+    }
+
+    function header(version) {
+      const rules = version === "old"
+        ? `<button class="rules-old" type="button">规则<span class="count-old">0</span></button>`
+        : "";
+      return `
+        <header class="app-header">
+          <div class="logo">Pixvel</div>
+          <div class="header-right">
+            <div class="nav-pill"><span class="on">搜索</span><span>历史</span></div>
+            ${rules}
+            <button class="lang" type="button">中</button>
+          </div>
+        </header>
+      `;
+    }
+
+    function oldSearch(isDesktop) {
+      const cards = NOVELS.map((novel) => novelCard(novel, true)).join("");
+      return `
+        ${header("old")}
+        <div class="scroll">
+          <div class="${isDesktop ? "desktop-hero" : "hero-old"}">
+            <h2>搜索小说</h2>
+            <p>输入关键词、作者名或标签来查找您喜欢的小说</p>
+          </div>
+          <div class="${isDesktop ? "desktop-card" : "card-old"}">
+            <div class="search"><span class="lens">⌕</span><input value="恋爱" readonly /><button class="go" type="button">搜索</button></div>
+            <div class="toolbar old">
+              <button class="filter-btn" type="button">筛选器</button>
+              <div class="sort-pills"><span class="on">最新发布</span><span>最早发布</span><span>最受欢迎</span></div>
+            </div>
+            <div class="found">找到 180 个结果</div>
+            <div class="grid ${isDesktop ? "desktop" : ""}">${cards}</div>
+            <div class="pager"><span class="on">1</span><span>2</span><span>3</span><span>…</span></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function newSearch(isDesktop) {
+      const shown = NOVELS.slice(0, Math.min(state.visible, NOVELS.length));
+      const remaining = NOVELS.length - shown.length;
+      const next = Math.min(10, remaining);
+      const percent = Math.round((shown.length / NOVELS.length) * 100);
+      const sortControl = isDesktop
+        ? `<div class="sort-pills"><span class="on">最新发布</span><span>最早发布</span><span>最受欢迎</span></div>`
+        : `<select class="sort-select" aria-label="排序方式"><option>最新发布</option><option>最早发布</option><option>最受欢迎</option></select>`;
+
+      return `
+        ${header("new")}
+        <div class="scroll">
+          <div class="${isDesktop ? "desktop-hero" : "hero-new"}">
+            <h2>搜索小说</h2>
+            <p>输入关键词、作者名或标签来查找您喜欢的小说</p>
+          </div>
+          <div class="${isDesktop ? "desktop-card" : "card-new"}">
+            <div class="search"><span class="lens">⌕</span><input value="恋爱" readonly /><button class="go" type="button">搜索</button></div>
+            <div class="toolbar">
+              ${sortControl}
+              <button class="filter-btn" type="button" data-open-filter>筛选器</button>
+              <button class="rules-new" type="button" data-open-rules>关键词规则<span class="n">0</span></button>
+            </div>
+            <div class="drawer ${state.filterOpen ? "open" : ""}">
+              <h3>筛选器</h3>
+              <div class="field">发布时间范围</div>
+              <div class="preset-grid" data-date-presets>
+                <button type="button" data-date="anytime" class="${state.datePreset === "anytime" ? "on" : ""}">不限</button>
+                <button type="button" data-date="last7Days" class="${state.datePreset === "last7Days" ? "on" : ""}">近 7 天</button>
+                <button type="button" data-date="last30Days" class="${state.datePreset === "last30Days" ? "on" : ""}">近 30 天</button>
+                <button type="button" data-date="last180Days" class="${state.datePreset === "last180Days" ? "on" : ""}">近半年</button>
+                <button type="button" data-date="last365Days" class="${state.datePreset === "last365Days" ? "on" : ""}">近一年</button>
+              </div>
+              <label class="field">开始日期<input value="${state.datePreset === "anytime" ? "" : "2026/08/25"}" placeholder="YYYY/MM/DD" /></label>
+              <div class="field">书签数</div>
+              <div class="preset-grid" data-bm-presets>
+                <button type="button" data-bm="0" class="${state.bookmarkPreset === 0 ? "on" : ""}">不限</button>
+                <button type="button" data-bm="100" class="${state.bookmarkPreset === 100 ? "on" : ""}">100+</button>
+                <button type="button" data-bm="500" class="${state.bookmarkPreset === 500 ? "on" : ""}">500+</button>
+                <button type="button" data-bm="1000" class="${state.bookmarkPreset === 1000 ? "on" : ""}">1,000+</button>
+                <button type="button" data-bm="5000" class="${state.bookmarkPreset === 5000 ? "on" : ""}">5,000+</button>
+                <button type="button" data-bm="10000" class="${state.bookmarkPreset === 10000 ? "on" : ""}">10,000+</button>
+              </div>
+              <div class="sticky-actions">
+                <button class="reset" type="button" data-reset>重置</button>
+                <button class="apply" type="button" data-apply>应用筛选</button>
+              </div>
+            </div>
+            <div class="drawer ${state.rulesOpen ? "open" : ""}">
+              <h3>关键词规则</h3>
+              <label class="field">屏蔽关键词<input placeholder="例如：剧透, R18" /></label>
+              <label class="field">高亮关键词<input placeholder="例如：甜, 长篇" /></label>
+              <p class="left" style="margin:0 0 10px;font-size:12px;color:rgba(17,24,39,.5)">多个关键词请用逗号分隔。5.9 里这个面板挂在顶栏「规则」按钮下。</p>
+              <button class="apply" type="button" data-apply style="width:100%;min-height:44px;border:0;border-radius:10px;background:var(--primary);color:#fff;font-weight:900">完成</button>
+            </div>
+            <div class="found">找到 180 个结果</div>
+            <div class="grid ${isDesktop ? "desktop" : ""}">${shown.map((novel) => novelCard(novel, isDesktop)).join("")}</div>
+            ${remaining > 0 ? `
+              <div class="more">
+                <div class="stat">已显示 ${shown.length} / ${NOVELS.length} 篇</div>
+                <div class="left">本页还有 ${remaining} 篇</div>
+                <div class="bar"><i style="width:${percent}%"></i></div>
+                <button type="button" data-more>继续加载 ${next} 篇</button>
+                <div class="hint">加载完本页后显示分页</div>
+              </div>
+            ` : `<div class="pager"><span class="on">1</span><span>2</span><span>3</span><span>…</span></div>`}
+          </div>
+        </div>
+      `;
+    }
+
+    function render() {
+      const isDesktop = state.viewport === "desktop";
+      document.querySelectorAll("[data-device]").forEach((node) => {
+        node.classList.toggle("phone", !isDesktop);
+        node.classList.toggle("desktop", isDesktop);
+      });
+      document.getElementById("old-screen").innerHTML = oldSearch(isDesktop);
+      document.getElementById("new-screen").innerHTML = newSearch(isDesktop);
+    }
+
+    document.querySelector(".seg").addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
+      state.viewport = button.dataset.viewport;
+      document.querySelectorAll(".seg button").forEach((node) => node.classList.toggle("active", node === button));
+      render();
+    });
+
+    document.addEventListener("click", (event) => {
+      const more = event.target.closest("[data-more]");
+      const openFilter = event.target.closest("[data-open-filter]");
+      const openRules = event.target.closest("[data-open-rules]");
+      const date = event.target.closest("[data-date]");
+      const bookmark = event.target.closest("[data-bm]");
+      const apply = event.target.closest("[data-apply]");
+      const reset = event.target.closest("[data-reset]");
+
+      if (more) {
+        state.visible = Math.min(NOVELS.length, state.visible + 10);
+        render();
+      } else if (openFilter) {
+        state.filterOpen = !state.filterOpen;
+        state.rulesOpen = false;
+        render();
+      } else if (openRules) {
+        state.rulesOpen = !state.rulesOpen;
+        state.filterOpen = false;
+        render();
+      } else if (date) {
+        state.datePreset = date.dataset.date;
+        render();
+      } else if (bookmark) {
+        state.bookmarkPreset = Number(bookmark.dataset.bm);
+        render();
+      } else if (reset) {
+        state.datePreset = "anytime";
+        state.bookmarkPreset = 0;
+        render();
+      } else if (apply) {
+        state.filterOpen = false;
+        state.rulesOpen = false;
+        render();
+      }
+    });
+
+    render();
+  </script>
+</body>
+</html>
