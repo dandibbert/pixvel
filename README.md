@@ -101,11 +101,32 @@ deno task deploy
 deno deploy --prod .
 ```
 
+部署前会自动生成 `build-info.json`，记录本次上传内容对应的 commit 与文件指纹。
+
+### 确认线上跑的是哪个版本
+
+```bash
+# 直接查看线上版本
+curl https://<你的应用域名>/api/version
+
+# 与本地工作区逐文件比对
+deno task deploy:check https://<你的应用域名>
+```
+
+`deploy:check` 会把线上返回的 `treeHash` 与本地即将上传的文件集合指纹对比：
+
+- `Match`：线上代码与当前工作区完全一致；
+- `Mismatch`：两者不同（退出码 `1`），输出会区分「同一 commit 但文件不同」与「commit 就不一样」；
+- `Cannot compare`：线上是加入版本标记之前的旧部署，重新 `deno task deploy` 一次即可。
+
+`treeHash` 覆盖所有会被上传的文件（含 `frontend/dist` 构建产物，但不含 `build-info.json` 自身），因此即使没有提交也能判断线上跑的到底是不是本地这份代码。`commit` 字段记录的是生成 `build-info.json` 时的 HEAD；如果之后把 `build-info.json` 单独提交了一次，它会比本地 HEAD 落后一个提交，此时以 `treeHash` 为准。
+
 ## API 概览
 
 ### Health
 
 - `GET /api/health`
+- `GET /api/version`
 
 ### Auth
 
@@ -151,9 +172,10 @@ npm --prefix frontend run lint
 
 # 后端质量检查
 
-deno fmt --check src deno.json
-deno lint src
+deno fmt --check src scripts deno.json
+deno lint src scripts
 deno check src/index.ts
+deno task test
 ```
 
 ## 项目结构
@@ -169,6 +191,8 @@ deno check src/index.ts
 ├── frontend/            # React 前端
 │   ├── src/
 │   └── public/
+├── scripts/             # 部署与版本校验脚本
+├── build-info.json      # 部署时生成的版本标记
 ├── deno.json
 ├── .env.example
 └── README.md

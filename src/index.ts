@@ -12,6 +12,7 @@ import bookmarks from "./routes/bookmarks.ts";
 import { getCorsConfig } from "./middleware/cors.ts";
 import { parseServerPort } from "./services/server_config.ts";
 import { serveStaticAsset } from "./services/static_files.ts";
+import { describeBuildInfo, loadBuildInfo } from "./services/build_info.ts";
 
 const app = new Hono();
 
@@ -20,8 +21,16 @@ app.use("*", logger());
 app.use("*", cors(getCorsConfig()));
 
 // Health check (moved to /api/health to avoid conflict with frontend)
-app.get("/api/health", (c) => {
-  return c.json({ status: "ok", message: "Pixvel Backend" });
+app.get("/api/health", async (c) => {
+  const build = await loadBuildInfo();
+  c.header("Cache-Control", "no-store");
+  return c.json({ status: "ok", message: "Pixvel Backend", version: describeBuildInfo(build) });
+});
+
+// Reports which revision this deployment was built from
+app.get("/api/version", async (c) => {
+  c.header("Cache-Control", "no-store");
+  return c.json(await loadBuildInfo());
 });
 
 // Mount auth routes

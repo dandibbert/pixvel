@@ -5,14 +5,24 @@
 在项目根目录运行：
 
 ```bash
-deno fmt --check src deno.json
-deno lint src
+deno fmt --check src scripts deno.json
+deno lint src scripts
 deno check src/index.ts
+deno task test
 cd frontend && npm run lint && npm run build
 ```
 
 说明：
-- `frontend/dist` 为构建产物，不应提交到仓库。
+- `frontend/dist` 需要提交，`deno deploy` 上传时会跳过被 `.gitignore` 忽略的文件。
+
+## 1.1 部署后确认线上版本
+
+```bash
+deno task deploy:check https://<你的应用域名>
+```
+
+输出 `Match` 表示线上跑的就是当前工作区这份代码；`Mismatch` 说明还有未部署的改动。
+`build-info.json` 由 `deno task deploy` 自动生成，需要随代码一起提交，否则线上会报告 `unknown`。
 
 ## 2. 安全检查
 

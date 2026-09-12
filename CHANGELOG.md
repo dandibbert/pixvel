@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
 - Updated DOMPurify to 3.4.14 to address known XSS sanitization bypasses.
 - Updated React Router to 7.18.3 to address known open redirect and hydration deserialization issues.
 
+### Added
+- `GET /api/version` reports the commit, branch and deployed-file fingerprint of the running deployment, and `GET /api/health` now includes the same revision as `version`.
+- `deno task deploy:check <url>` compares a live deployment with the local working tree and exits non-zero when they differ; `deno task deploy` records the metadata in `build-info.json` before uploading.
+
 ### Changed
 - Raised the frontend build requirement to Node.js 20 or newer for React Router 7.
 - Search pages now render every novel returned by the current API page immediately instead of revealing results ten at a time.
