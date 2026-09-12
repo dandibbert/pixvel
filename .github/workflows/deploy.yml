@@ -35,7 +35,7 @@ jobs:
       DEPLOY_URL: ${{ vars.DEPLOY_URL }}
       BUILD_BRANCH: ${{ github.ref_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: denoland/setup-deno@v2
         with:
