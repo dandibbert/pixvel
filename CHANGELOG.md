@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - `deno task deploy:check <url>` compares a live deployment with the local working tree and exits non-zero when they differ; `deno task deploy` records the metadata in `build-info.json` before uploading.
 
 ### Changed
+- The Deploy org and app are no longer pinned in `deno.json`: both must come from `DENO_DEPLOY_ORG` / `DENO_DEPLOY_APP` (`.env.deploy` locally, repository variables in CI). Deploying also no longer edits the project: `scripts/publish.sh` reverts the org/app the deploy CLI writes into `deno.json` and keeps the CLI's own dependencies out of `deno.lock`.
 - Raised the frontend build requirement to Node.js 20 or newer for React Router 7.
 - Search pages now render every novel returned by the current API page immediately instead of revealing results ten at a time.
 - Author works now use numbered, URL-backed pagination with a bounded local cache, so refreshes restore the current page without refetching fresh cached data.

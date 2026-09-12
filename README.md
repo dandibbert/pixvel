@@ -97,7 +97,17 @@ deno task deploy
 
 该命令会依次执行：构建前端 → 生成 `build-info.json`（记录本次上传内容对应的 commit 与文件指纹）→ 调用 `scripts/publish.sh` 上传。
 
-`scripts/publish.sh` 是本地与 CI 共用的上传入口。Deno 2.9.x 的 `deno deploy` 子命令会把参数重复传两遍，导致它拒绝自己的 `--prod`、`--org` 等标志，脚本会先探测再自动改用 `deno run -A jsr:@deno/deploy`，所以两种 Deno 版本都能用。组织与应用名取自 `DENO_DEPLOY_ORG` / `DENO_DEPLOY_APP`，未设置时回退到 `deno.json` 里的 `deploy` 配置。
+部署目标不写在仓库里：本地请在 `.env.deploy` 中设置 `DENO_DEPLOY_ORG` 与 `DENO_DEPLOY_APP`（`.env.*` 已被 `.gitignore` 忽略），缺任何一个都会直接报错退出。
+
+```env
+DENO_DEPLOY_ORG=your_org
+DENO_DEPLOY_APP=your_app
+```
+
+`scripts/publish.sh` 是本地与 CI 共用的上传入口，它还处理两件杂事：
+
+- Deno 2.9.x 的 `deno deploy` 子命令会把参数重复传两遍，导致它拒绝自己的 `--prod`、`--org` 等标志；脚本先探测再自动改用 `deno run -A jsr:@deno/deploy`，两种 Deno 版本都能用。
+- 部署不应该反过来改动项目本身：Deploy CLI 成功后会把解析到的 org / app 写回 `deno.json`，从 JSR 运行时还会把自己的依赖记进 `deno.lock`。脚本用 `--no-lock` 并在结束时还原这两个文件，既避免账号信息被提交，也避免工作区与刚上传的内容不一致导致 `deploy:check` 误报。
 
 ### 通过 GitHub Actions 部署
 
@@ -107,10 +117,12 @@ deno task deploy
 
 | 类型 | 名称 | 是否必需 | 说明 |
 | --- | --- | --- | --- |
-| Secret | `DENO_DEPLOY_TOKEN` | 必需 | 在 Deno Deploy 控制台 Account → Access Tokens 生成 |
-| Variable | `DENO_DEPLOY_ORG` | 可选 | 不设置则用 `deno.json` 里的 `deploy.org` |
-| Variable | `DENO_DEPLOY_APP` | 可选 | 不设置则用 `deno.json` 里的 `deploy.app` |
+| Secret | `DENO_DEPLOY_TOKEN` | 必需 | 在 Deno Deploy 控制台 Account → Access Tokens 生成；这是唯一的凭据 |
+| Variable | `DENO_DEPLOY_ORG` | 必需 | 组织 slug，仓库里不再硬编码 |
+| Variable | `DENO_DEPLOY_APP` | 必需 | 应用名；非交互模式下 CLI 不会自动推断 |
 | Variable | `DEPLOY_URL` | 可选 | 设置后部署结束会自动校验线上版本 |
+
+三项缺任何一个，部署 job 会在第一步就带着明确提示失败。org / app 本身不是机密（应用名已经体现在线上域名里），把它们放在仓库变量里只是为了不让仓库绑死在某个账号上。
 
 工作流会先跑 `.github/workflows/ci.yml`（后端 `fmt` / `lint` / `check` / `test`，前端 `lint` / `test` / `build`），其中一步会校验提交的 `frontend/dist` 与源码重新构建的结果完全一致——构建产物是提交进仓库的，`deno deploy` 上传时又会跳过被 `.gitignore` 忽略的文件，所以产物过期必须在部署前拦下。检查通过后，部署步骤**原样上传当前 commit 的工作区**（不再重新构建），因此任何人 checkout 同一个 commit 都能用 `deno task deploy:check` 校验出 `Match`。
 

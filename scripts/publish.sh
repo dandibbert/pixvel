@@ -4,32 +4,56 @@ set -euo pipefail
 # Uploads the current working tree to Deno Deploy. Shared by `deno task deploy`
 # and the GitHub Actions workflow so both use the exact same invocation.
 #
-# Reads DENO_DEPLOY_ORG / DENO_DEPLOY_APP when set; otherwise the org and app
-# recorded in deno.json are used.
+# The target is never hardcoded in the repository: set DENO_DEPLOY_ORG and
+# DENO_DEPLOY_APP in .env.deploy locally, or as repository variables in CI.
 
 DEPLOY_CLI_MODULE="${DEPLOY_CLI_MODULE:-jsr:@deno/deploy}"
 
-args=(--prod)
-
-if [ -n "${DENO_DEPLOY_ORG:-}" ]; then
-  args+=(--org "$DENO_DEPLOY_ORG")
+if [ -z "${DENO_DEPLOY_ORG:-}" ] || [ -z "${DENO_DEPLOY_APP:-}" ]; then
+  echo "Error: set DENO_DEPLOY_ORG and DENO_DEPLOY_APP before deploying" >&2
+  exit 1
 fi
 
-if [ -n "${DENO_DEPLOY_APP:-}" ]; then
-  args+=(--app "$DENO_DEPLOY_APP")
-fi
+args=(--prod --org "$DENO_DEPLOY_ORG" --app "$DENO_DEPLOY_APP")
 
 if [ -n "${CI:-}" ]; then
   args+=(--non-interactive)
 fi
+
+# Deploying must not edit the project itself: the CLI writes the resolved org
+# and app back into deno.json, and running it from JSR would record its own
+# dependencies in deno.lock. Either change puts the working tree out of sync
+# with what was just uploaded, which makes `deno task deploy:check` report a
+# false mismatch (and would commit the account name). The target is always
+# passed explicitly above, so both rewrites are simply undone.
+tracked_files=(deno.json deno.lock)
+backup_dir="$(mktemp -d)"
+
+for file in "${tracked_files[@]}"; do
+  if [ -f "$file" ]; then
+    cp "$file" "$backup_dir/$file"
+  fi
+done
+
+restore_project_files() {
+  for file in "${tracked_files[@]}"; do
+    if [ -f "$backup_dir/$file" ] && ! cmp -s "$file" "$backup_dir/$file"; then
+      cp "$backup_dir/$file" "$file"
+      echo "note: reverted the changes the deploy CLI made to $file"
+    fi
+  done
+  rm -rf "$backup_dir"
+}
+
+trap restore_project_files EXIT
 
 # Deno 2.9.x forwards every flag to the bundled deploy CLI twice, so the
 # subcommand rejects its own arguments ("can only occur once"). Probing with
 # --version tells the two behaviours apart; when it fails, the identical CLI is
 # run straight from JSR instead.
 if deno deploy --version >/dev/null 2>&1; then
-  exec deno deploy "${args[@]}" "${@:-.}"
+  deno deploy "${args[@]}" "${@:-.}"
+else
+  echo "note: 'deno deploy' cannot parse its own flags on this Deno version; using $DEPLOY_CLI_MODULE"
+  deno run --allow-all --no-lock "$DEPLOY_CLI_MODULE" "${args[@]}" "${@:-.}"
 fi
-
-echo "note: 'deno deploy' cannot parse its own flags on this Deno version; using $DEPLOY_CLI_MODULE"
-exec deno run --allow-all "$DEPLOY_CLI_MODULE" "${args[@]}" "${@:-.}"

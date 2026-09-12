@@ -41,10 +41,20 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: Require a deploy token
+      - name: Require the deploy credentials and target
         run: |
+          missing=()
           if [ -z "$DENO_DEPLOY_TOKEN" ]; then
-            echo "::error::Missing the DENO_DEPLOY_TOKEN repository secret."
+            missing+=("secret DENO_DEPLOY_TOKEN")
+          fi
+          if [ -z "$DENO_DEPLOY_ORG" ]; then
+            missing+=("variable DENO_DEPLOY_ORG")
+          fi
+          if [ -z "$DENO_DEPLOY_APP" ]; then
+            missing+=("variable DENO_DEPLOY_APP")
+          fi
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing repository settings: ${missing[*]}"
             exit 1
           fi
 

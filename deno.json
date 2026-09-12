@@ -29,9 +29,5 @@
   "imports": {
     "hono": "jsr:@hono/hono@^4.6.0",
     "hono/": "jsr:/@hono/hono@^4.6.0/"
-  },
-  "deploy": {
-    "org": "dandibbert",
-    "app": "pixvel"
   }
 }
