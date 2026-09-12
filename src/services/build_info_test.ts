@@ -28,6 +28,14 @@ Deno.test("build info file stays tracked so deno deploy uploads it", async () =>
   assertEquals(ignoresBuildInfo, false);
 });
 
+Deno.test("deno.json does not pin a deploy target", async () => {
+  const config = JSON.parse(await Deno.readTextFile("./deno.json"));
+
+  // The deploy CLI writes the resolved org/app back into deno.json; committing
+  // them would tie the repository to one account.
+  assertEquals(config.deploy, undefined);
+});
+
 Deno.test("parseBuildInfo reads deploy metadata", () => {
   assertJsonEquals(parseBuildInfo(JSON.stringify(SAMPLE)), SAMPLE);
 });
