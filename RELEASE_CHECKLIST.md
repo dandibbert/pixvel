@@ -14,12 +14,15 @@ cd frontend && npm run lint && npm run build
 
 说明：
 - `frontend/dist` 需要提交，`deno deploy` 上传时会跳过被 `.gitignore` 忽略的文件。
+- 以上检查同样由 `.github/workflows/ci.yml` 在 push 与 PR 上执行，并额外校验提交的 `frontend/dist` 没有过期。
 
 ## 1.1 部署后确认线上版本
 
 ```bash
 deno task deploy:check https://<你的应用域名>
 ```
+
+通过 GitHub Actions 部署时，配置了 `DEPLOY_URL` 变量的话这一步会自动执行。
 
 输出 `Match` 表示线上跑的就是当前工作区这份代码；`Mismatch` 说明还有未部署的改动。
 `build-info.json` 由 `deno task deploy` 自动生成，需要随代码一起提交，否则线上会报告 `unknown`。
