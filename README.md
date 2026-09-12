@@ -95,13 +95,26 @@ npm --prefix frontend run dev
 deno task deploy
 ```
 
-该命令会先构建前端，再执行：
+该命令会依次执行：构建前端 → 生成 `build-info.json`（记录本次上传内容对应的 commit 与文件指纹）→ 调用 `scripts/publish.sh` 上传。
 
-```bash
-deno deploy --prod .
-```
+`scripts/publish.sh` 是本地与 CI 共用的上传入口。Deno 2.9.x 的 `deno deploy` 子命令会把参数重复传两遍，导致它拒绝自己的 `--prod`、`--org` 等标志，脚本会先探测再自动改用 `deno run -A jsr:@deno/deploy`，所以两种 Deno 版本都能用。组织与应用名取自 `DENO_DEPLOY_ORG` / `DENO_DEPLOY_APP`，未设置时回退到 `deno.json` 里的 `deploy` 配置。
 
-部署前会自动生成 `build-info.json`，记录本次上传内容对应的 commit 与文件指纹。
+### 通过 GitHub Actions 部署
+
+推送到 `main` 会触发 `.github/workflows/deploy.yml`；也可以在 Actions 页手动运行（紧急情况下可勾选 `skip_checks` 跳过检查）。
+
+需要在仓库里配置：
+
+| 类型 | 名称 | 是否必需 | 说明 |
+| --- | --- | --- | --- |
+| Secret | `DENO_DEPLOY_TOKEN` | 必需 | 在 Deno Deploy 控制台 Account → Access Tokens 生成 |
+| Variable | `DENO_DEPLOY_ORG` | 可选 | 不设置则用 `deno.json` 里的 `deploy.org` |
+| Variable | `DENO_DEPLOY_APP` | 可选 | 不设置则用 `deno.json` 里的 `deploy.app` |
+| Variable | `DEPLOY_URL` | 可选 | 设置后部署结束会自动校验线上版本 |
+
+工作流会先跑 `.github/workflows/ci.yml`（后端 `fmt` / `lint` / `check` / `test`，前端 `lint` / `test` / `build`），其中一步会校验提交的 `frontend/dist` 与源码重新构建的结果完全一致——构建产物是提交进仓库的，`deno deploy` 上传时又会跳过被 `.gitignore` 忽略的文件，所以产物过期必须在部署前拦下。检查通过后，部署步骤**原样上传当前 commit 的工作区**（不再重新构建），因此任何人 checkout 同一个 commit 都能用 `deno task deploy:check` 校验出 `Match`。
+
+配置了 `DEPLOY_URL` 时，部署完成后工作流会轮询 `/api/version`，确认线上跑的确实是这次上传的那份代码，否则 job 失败。
 
 ### 确认线上跑的是哪个版本
 
