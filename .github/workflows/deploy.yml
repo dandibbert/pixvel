@@ -1,0 +1,92 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      skip_checks:
+        description: Deploy without running CI first (emergency hotfixes only)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Never let two deploys race for the production revision.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: ${{ !inputs.skip_checks }}
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    name: Deploy to Deno Deploy
+    needs: verify
+    if: ${{ always() && (needs.verify.result == 'success' || needs.verify.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    env:
+      DENO_DEPLOY_TOKEN: ${{ secrets.DENO_DEPLOY_TOKEN }}
+      DEPLOY_ORG: ${{ vars.DENO_DEPLOY_ORG }}
+      DEPLOY_APP: ${{ vars.DENO_DEPLOY_APP }}
+      DEPLOY_URL: ${{ vars.DEPLOY_URL }}
+      BUILD_BRANCH: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Require a deploy token
+        run: |
+          if [ -z "$DENO_DEPLOY_TOKEN" ]; then
+            echo "::error::Missing the DENO_DEPLOY_TOKEN repository secret."
+            exit 1
+          fi
+
+      # The CI job proved the committed frontend/dist matches its sources, so
+      # the checkout is uploaded as-is: the deployed tree stays reproducible
+      # from this commit and `deno task deploy:check` can confirm it.
+      - name: Record build metadata
+        run: deno task build-info
+
+      - name: Deploy
+        run: |
+          # Falls back to the org/app recorded in deno.json when the
+          # repository variables are not set.
+          args=(--non-interactive --prod)
+          if [ -n "$DEPLOY_ORG" ]; then
+            args+=(--org "$DEPLOY_ORG")
+          fi
+          if [ -n "$DEPLOY_APP" ]; then
+            args+=(--app "$DEPLOY_APP")
+          fi
+          deno deploy "${args[@]}"
+
+      - name: Verify the deployment serves this revision
+        if: ${{ vars.DEPLOY_URL != '' }}
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if deno task deploy:check "$DEPLOY_URL"; then
+              exit 0
+            fi
+            echo "Deployment not live yet (attempt $attempt); retrying in 15s"
+            sleep 15
+          done
+          echo "::error::$DEPLOY_URL does not serve the revision that was just uploaded."
+          exit 1
+
+      - name: Summarize the deployment
+        if: ${{ always() }}
+        run: |
+          {
+            echo "### Deployed revision"
+            echo
+            echo '```json'
+            cat build-info.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
