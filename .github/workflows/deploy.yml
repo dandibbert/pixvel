@@ -30,9 +30,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DENO_DEPLOY_TOKEN: ${{ secrets.DENO_DEPLOY_TOKEN }}
-      DENO_DEPLOY_ORG: ${{ vars.DENO_DEPLOY_ORG }}
-      DENO_DEPLOY_APP: ${{ vars.DENO_DEPLOY_APP }}
-      DEPLOY_URL: ${{ vars.DEPLOY_URL }}
+      # The org, app and URL are not credentials, so they belong in Variables —
+      # but Secrets is an easy place to land on, and reading both means the
+      # deploy works either way.
+      DENO_DEPLOY_ORG: ${{ vars.DENO_DEPLOY_ORG || secrets.DENO_DEPLOY_ORG }}
+      DENO_DEPLOY_APP: ${{ vars.DENO_DEPLOY_APP || secrets.DENO_DEPLOY_APP }}
+      DEPLOY_URL: ${{ vars.DEPLOY_URL || secrets.DEPLOY_URL }}
       BUILD_BRANCH: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v5
@@ -44,17 +47,13 @@ jobs:
       - name: Require the deploy credentials and target
         run: |
           missing=()
-          if [ -z "$DENO_DEPLOY_TOKEN" ]; then
-            missing+=("secret DENO_DEPLOY_TOKEN")
-          fi
-          if [ -z "$DENO_DEPLOY_ORG" ]; then
-            missing+=("variable DENO_DEPLOY_ORG")
-          fi
-          if [ -z "$DENO_DEPLOY_APP" ]; then
-            missing+=("variable DENO_DEPLOY_APP")
-          fi
+          for name in DENO_DEPLOY_TOKEN DENO_DEPLOY_ORG DENO_DEPLOY_APP; do
+            if [ -z "${!name}" ]; then
+              missing+=("$name")
+            fi
+          done
           if [ ${#missing[@]} -gt 0 ]; then
-            echo "::error::Missing repository settings: ${missing[*]}"
+            echo "::error::Missing: ${missing[*]}. Add them under Settings -> Secrets and variables -> Actions. DENO_DEPLOY_TOKEN belongs on the Secrets tab; DENO_DEPLOY_ORG and DENO_DEPLOY_APP belong on the Variables tab (both tabs are read, but repository scope is required, not an environment)."
             exit 1
           fi
 
@@ -68,7 +67,7 @@ jobs:
         run: bash scripts/publish.sh
 
       - name: Verify the deployment serves this revision
-        if: ${{ vars.DEPLOY_URL != '' }}
+        if: ${{ env.DEPLOY_URL != '' }}
         run: |
           for attempt in 1 2 3 4 5; do
             if deno task deploy:check "$DEPLOY_URL"; then
