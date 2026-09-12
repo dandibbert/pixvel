@@ -107,7 +107,7 @@ DENO_DEPLOY_APP=your_app
 `scripts/publish.sh` 是本地与 CI 共用的上传入口，它还处理两件杂事：
 
 - Deno 2.9.x 的 `deno deploy` 子命令会把参数重复传两遍，导致它拒绝自己的 `--prod`、`--org` 等标志；脚本先探测再自动改用 `deno run -A jsr:@deno/deploy`，两种 Deno 版本都能用。
-- 部署成功后 Deploy CLI 会把解析到的 org / app 写回 `deno.json`；脚本会还原这次改写，既避免账号信息被提交，也避免工作区与刚上传的内容不一致导致 `deploy:check` 误报。
+- 部署不应该反过来改动项目本身：Deploy CLI 成功后会把解析到的 org / app 写回 `deno.json`，从 JSR 运行时还会把自己的依赖记进 `deno.lock`。脚本用 `--no-lock` 并在结束时还原这两个文件，既避免账号信息被提交，也避免工作区与刚上传的内容不一致导致 `deploy:check` 误报。
 
 ### 通过 GitHub Actions 部署
 

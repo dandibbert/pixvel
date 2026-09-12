@@ -8,7 +8,6 @@ set -euo pipefail
 # DENO_DEPLOY_APP in .env.deploy locally, or as repository variables in CI.
 
 DEPLOY_CLI_MODULE="${DEPLOY_CLI_MODULE:-jsr:@deno/deploy}"
-DEPLOY_CONFIG_FILE="deno.json"
 
 if [ -z "${DENO_DEPLOY_ORG:-}" ] || [ -z "${DENO_DEPLOY_APP:-}" ]; then
   echo "Error: set DENO_DEPLOY_ORG and DENO_DEPLOY_APP before deploying" >&2
@@ -21,23 +20,32 @@ if [ -n "${CI:-}" ]; then
   args+=(--non-interactive)
 fi
 
-# After a successful upload the deploy CLI writes the resolved org and app back
-# into deno.json. That would put the account name back into a tracked file and
-# leave the working tree differing from what was just uploaded, which in turn
-# makes `deno task deploy:check` report a false mismatch. The target is always
-# passed explicitly above, so the rewrite is simply undone.
-config_backup="$(mktemp)"
-cp "$DEPLOY_CONFIG_FILE" "$config_backup"
+# Deploying must not edit the project itself: the CLI writes the resolved org
+# and app back into deno.json, and running it from JSR would record its own
+# dependencies in deno.lock. Either change puts the working tree out of sync
+# with what was just uploaded, which makes `deno task deploy:check` report a
+# false mismatch (and would commit the account name). The target is always
+# passed explicitly above, so both rewrites are simply undone.
+tracked_files=(deno.json deno.lock)
+backup_dir="$(mktemp -d)"
 
-restore_deploy_config() {
-  if ! cmp -s "$DEPLOY_CONFIG_FILE" "$config_backup"; then
-    cp "$config_backup" "$DEPLOY_CONFIG_FILE"
-    echo "note: reverted the org/app the deploy CLI wrote into $DEPLOY_CONFIG_FILE"
+for file in "${tracked_files[@]}"; do
+  if [ -f "$file" ]; then
+    cp "$file" "$backup_dir/$file"
   fi
-  rm -f "$config_backup"
+done
+
+restore_project_files() {
+  for file in "${tracked_files[@]}"; do
+    if [ -f "$backup_dir/$file" ] && ! cmp -s "$file" "$backup_dir/$file"; then
+      cp "$backup_dir/$file" "$file"
+      echo "note: reverted the changes the deploy CLI made to $file"
+    fi
+  done
+  rm -rf "$backup_dir"
 }
 
-trap restore_deploy_config EXIT
+trap restore_project_files EXIT
 
 # Deno 2.9.x forwards every flag to the bundled deploy CLI twice, so the
 # subcommand rejects its own arguments ("can only occur once"). Probing with
@@ -47,5 +55,5 @@ if deno deploy --version >/dev/null 2>&1; then
   deno deploy "${args[@]}" "${@:-.}"
 else
   echo "note: 'deno deploy' cannot parse its own flags on this Deno version; using $DEPLOY_CLI_MODULE"
-  deno run --allow-all "$DEPLOY_CLI_MODULE" "${args[@]}" "${@:-.}"
+  deno run --allow-all --no-lock "$DEPLOY_CLI_MODULE" "${args[@]}" "${@:-.}"
 fi
