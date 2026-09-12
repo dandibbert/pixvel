@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useReaderStore } from '../../stores/readerStore'
 import { useNovelPagination } from '../../hooks/useNovelPagination'
+import { useReadingProgress } from '../../hooks/useReadingProgress'
 import { useEventListener } from '../../hooks/useEventListener'
 import { NovelSeries } from '../../hooks/useNovelDetail'
 import { useI18n } from '../../i18n/useI18n'
@@ -29,6 +30,12 @@ export default function NovelReader({ series }: NovelReaderProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
+
+  useReadingProgress({
+    novelId: novel?.id,
+    currentPage,
+    isReady: Boolean(novel) && pages.length > 0,
+  })
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true)

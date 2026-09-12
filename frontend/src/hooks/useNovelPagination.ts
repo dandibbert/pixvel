@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useSearchParams, useParams } from 'react-router-dom'
 import { useReaderStore } from '../stores/readerStore'
-import { scrollViewportToTopAfterNextFrame } from '../utils/pageScroll'
 import {
   buildReaderPageSearchParams,
   resolveNextReaderPage,
@@ -36,10 +35,9 @@ export function useNovelPagination() {
     }
   }, [searchParams, totalPages, setPage])
 
-  // Reset scroll position after page state is applied to avoid race with URL updates/re-render.
-  useEffect(() => {
-    return scrollViewportToTopAfterNextFrame({ behavior: 'auto' })
-  }, [currentPage])
+  // Scrolling is owned by useReadingProgress, which both resets the viewport on
+  // page turns and restores a saved offset; splitting those across two hooks
+  // makes them race.
 
   const applyPageNavigation = (page: number) => {
     isUpdatingRef.current = true

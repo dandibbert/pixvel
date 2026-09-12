@@ -85,6 +85,10 @@ vi.mock('../../hooks/useNovelPagination', () => ({
   }),
 }))
 
+vi.mock('../../hooks/useReadingProgress', () => ({
+  useReadingProgress: () => undefined,
+}))
+
 vi.mock('../../i18n/useI18n', () => ({
   useI18n: () => ({
     t: (key: string) => {
