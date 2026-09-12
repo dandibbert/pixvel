@@ -122,7 +122,9 @@ DENO_DEPLOY_APP=your_app
 | Variable | `DENO_DEPLOY_APP` | 必需 | 应用名；非交互模式下 CLI 不会自动推断 |
 | Variable | `DEPLOY_URL` | 可选 | 设置后部署结束会自动校验线上版本 |
 
-三项缺任何一个，部署 job 会在第一步就带着明确提示失败。org / app 本身不是机密（应用名已经体现在线上域名里），把它们放在仓库变量里只是为了不让仓库绑死在某个账号上。
+添加位置是 Settings → Secrets and variables → Actions：token 放 **Secrets** 标签页，org / app / URL 放 **Variables** 标签页。工作流两个标签页都会读，所以放错了也能跑；但必须是仓库级（Repository）配置，只加在某个 Environment 下的不会被读到。
+
+前三项缺任何一个，部署 job 都会在第一步带着明确提示失败。org / app 本身不是机密（应用名已经体现在线上域名里），放进 Variables 只是为了不让仓库绑死在某个账号上。
 
 工作流会先跑 `.github/workflows/ci.yml`（后端 `fmt` / `lint` / `check` / `test`，前端 `lint` / `test` / `build`），其中一步会校验提交的 `frontend/dist` 与源码重新构建的结果完全一致——构建产物是提交进仓库的，`deno deploy` 上传时又会跳过被 `.gitignore` 忽略的文件，所以产物过期必须在部署前拦下。检查通过后，部署步骤**原样上传当前 commit 的工作区**（不再重新构建），因此任何人 checkout 同一个 commit 都能用 `deno task deploy:check` 校验出 `Match`。
 
