@@ -119,7 +119,7 @@ deno task deploy:check https://<你的应用域名>
 - `Mismatch`：两者不同（退出码 `1`），输出会区分「同一 commit 但文件不同」与「commit 就不一样」；
 - `Cannot compare`：线上是加入版本标记之前的旧部署，重新 `deno task deploy` 一次即可。
 
-`treeHash` 覆盖所有会被上传的文件（含 `frontend/dist` 构建产物），因此即使没有提交也能判断线上跑的到底是不是本地这份代码。
+`treeHash` 覆盖所有会被上传的文件（含 `frontend/dist` 构建产物，但不含 `build-info.json` 自身），因此即使没有提交也能判断线上跑的到底是不是本地这份代码。`commit` 字段记录的是生成 `build-info.json` 时的 HEAD；如果之后把 `build-info.json` 单独提交了一次，它会比本地 HEAD 落后一个提交，此时以 `treeHash` 为准。
 
 ## API 概览
 
