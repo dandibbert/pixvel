@@ -18,7 +18,4 @@ npm --prefix frontend run build
 # assets that are about to be uploaded.
 deno run --allow-read --allow-write --allow-env=BUILD_BRANCH --allow-run=git scripts/build_info.ts
 
-deno deploy \
-  --org="$DENO_DEPLOY_ORG" \
-  --app="$DENO_DEPLOY_APP" \
-  --prod .
+bash scripts/publish.sh
