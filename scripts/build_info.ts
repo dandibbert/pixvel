@@ -57,6 +57,28 @@ export async function hashDeployableFiles(paths: string[]): Promise<string> {
   return await sha256Hex(new TextEncoder().encode(entries.join("\n")));
 }
 
+/**
+ * CI checkouts are often on a detached HEAD, where Git can only report
+ * "HEAD"; the workflow passes the real branch through `BUILD_BRANCH`.
+ */
+export function pickBranch(gitBranch: string | null, envBranch: string | null): string {
+  const fromGit = gitBranch?.trim();
+  if (fromGit && fromGit !== "HEAD") return fromGit;
+
+  return envBranch?.trim() || fromGit || UNKNOWN_VALUE;
+}
+
+export async function resolveBranch(): Promise<string> {
+  let envBranch: string | null = null;
+  try {
+    envBranch = Deno.env.get("BUILD_BRANCH") ?? null;
+  } catch {
+    // Running without --allow-env: fall back to whatever Git reports.
+  }
+
+  return pickBranch(await runGit(["rev-parse", "--abbrev-ref", "HEAD"]), envBranch);
+}
+
 export async function isWorkingTreeDirty(): Promise<boolean> {
   const output = await runGit(["status", "--porcelain", "-z"]);
   if (output === null) return false;
@@ -70,7 +92,7 @@ export async function isWorkingTreeDirty(): Promise<boolean> {
 
 export async function collectBuildInfo(): Promise<BuildInfo> {
   const commit = (await runGit(["rev-parse", "HEAD"]))?.trim() || UNKNOWN_VALUE;
-  const branch = (await runGit(["rev-parse", "--abbrev-ref", "HEAD"]))?.trim() || UNKNOWN_VALUE;
+  const branch = await resolveBranch();
   const files = await listDeployableFiles();
 
   return {

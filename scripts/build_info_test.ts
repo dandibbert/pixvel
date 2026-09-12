@@ -4,6 +4,7 @@ import {
   collectBuildInfo,
   hashDeployableFiles,
   listDeployableFiles,
+  pickBranch,
   sha256Hex,
 } from "./build_info.ts";
 import { compareBuilds, resolveVersionUrl } from "./check_deployment.ts";
@@ -45,6 +46,19 @@ Deno.test("collectBuildInfo fingerprints the current checkout", async () => {
   assertEquals(info.commitShort, info.commit.slice(0, 7));
   assertEquals(info.treeHash === UNKNOWN_VALUE, false);
   assertEquals(Number.isNaN(Date.parse(info.builtAt)), false);
+});
+
+Deno.test("pickBranch prefers the branch Git reports", () => {
+  assertEquals(pickBranch("main", "feature"), "main");
+  assertEquals(pickBranch("  main  ", null), "main");
+});
+
+Deno.test("pickBranch falls back to the CI branch on a detached HEAD", () => {
+  assertEquals(pickBranch("HEAD", "main"), "main");
+  assertEquals(pickBranch(null, "main"), "main");
+  assertEquals(pickBranch("HEAD", null), "HEAD");
+  assertEquals(pickBranch(null, null), "unknown");
+  assertEquals(pickBranch(null, "   "), "unknown");
 });
 
 Deno.test("resolveVersionUrl targets the version endpoint of a deployment", () => {

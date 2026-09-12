@@ -5,7 +5,7 @@
     "start": "deno run --allow-net --allow-env --allow-read --allow-write --unstable-kv src/index.ts",
     "deploy": "bash scripts/deploy.sh",
     "deploy:check": "deno run --allow-read --allow-env --allow-net --allow-run=git scripts/check_deployment.ts",
-    "build-info": "deno run --allow-read --allow-write --allow-run=git scripts/build_info.ts",
+    "build-info": "deno run --allow-read --allow-write --allow-env=BUILD_BRANCH --allow-run=git scripts/build_info.ts",
     "test": "deno test --allow-read --allow-run=git src scripts"
   },
   "lint": {

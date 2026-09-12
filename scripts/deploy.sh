@@ -16,7 +16,7 @@ npm --prefix frontend run build
 
 # Must run after the frontend build so the recorded fingerprint covers the
 # assets that are about to be uploaded.
-deno run --allow-read --allow-write --allow-run=git scripts/build_info.ts
+deno run --allow-read --allow-write --allow-env=BUILD_BRANCH --allow-run=git scripts/build_info.ts
 
 deno deploy \
   --org="$DENO_DEPLOY_ORG" \
