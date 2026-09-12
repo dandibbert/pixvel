@@ -30,8 +30,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DENO_DEPLOY_TOKEN: ${{ secrets.DENO_DEPLOY_TOKEN }}
-      DEPLOY_ORG: ${{ vars.DENO_DEPLOY_ORG }}
-      DEPLOY_APP: ${{ vars.DENO_DEPLOY_APP }}
+      DENO_DEPLOY_ORG: ${{ vars.DENO_DEPLOY_ORG }}
+      DENO_DEPLOY_APP: ${{ vars.DENO_DEPLOY_APP }}
       DEPLOY_URL: ${{ vars.DEPLOY_URL }}
       BUILD_BRANCH: ${{ github.ref_name }}
     steps:
@@ -55,17 +55,7 @@ jobs:
         run: deno task build-info
 
       - name: Deploy
-        run: |
-          # Falls back to the org/app recorded in deno.json when the
-          # repository variables are not set.
-          args=(--non-interactive --prod)
-          if [ -n "$DEPLOY_ORG" ]; then
-            args+=(--org "$DEPLOY_ORG")
-          fi
-          if [ -n "$DEPLOY_APP" ]; then
-            args+=(--app "$DEPLOY_APP")
-          fi
-          deno deploy "${args[@]}"
+        run: bash scripts/publish.sh
 
       - name: Verify the deployment serves this revision
         if: ${{ vars.DEPLOY_URL != '' }}
