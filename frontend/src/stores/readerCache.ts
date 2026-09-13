@@ -169,20 +169,28 @@ export function buildFreshReaderLoadState({
   novel,
   pages,
   updatedCache,
+  currentPage = 1,
 }: {
   novel: NovelDetail
   pages: NovelPage[]
   updatedCache: ReaderCacheState
+  currentPage?: number
 }) {
   return {
     novel,
     pages,
     totalPages: pages.length,
-    currentPage: 1,
+    currentPage: clampReaderPage(currentPage, pages.length),
     isLoading: false,
     novelCache: updatedCache.novelCache,
     cacheOrder: updatedCache.cacheOrder,
   }
+}
+
+function clampReaderPage(page: number, totalPages: number): number {
+  if (!Number.isFinite(page) || totalPages < 1) return 1
+
+  return Math.min(Math.max(1, Math.round(page)), totalPages)
 }
 
 export function buildClearedReaderLoadState() {

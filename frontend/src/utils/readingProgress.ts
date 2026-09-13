@@ -95,17 +95,62 @@ export function resolveReadingProgressOffset(
   return entry.offset
 }
 
+/**
+ * The page lives in the novel cache too, but that cache holds full novel texts
+ * and only keeps the last few novels, so it is evicted long before this record
+ * is. Reading the page from here keeps a reload on an evicted novel from
+ * dropping back to page one.
+ */
+export function resolveReadingProgressPage(
+  record: ReadingProgressRecord,
+  { novelId, totalPages }: { novelId: string; totalPages: number },
+): number | null {
+  const entry = record[novelId]
+  if (!entry || entry.page > totalPages) return null
+
+  return entry.page
+}
+
 export function readReadingProgressOffset(
   storage: Storage | null | undefined,
   location: ReadingProgressLocation,
 ): number | null {
-  if (!storage) return null
-
-  const record = parseReadingProgressRecord(
-    readStorageItem(storage, READING_PROGRESS_STORAGE_KEY, ''),
-  )
+  const record = readReadingProgressRecord(storage)
+  if (!record) return null
 
   return resolveReadingProgressOffset(record, location)
+}
+
+export function readReadingProgressPage(
+  storage: Storage | null | undefined,
+  location: { novelId: string; totalPages: number },
+): number | null {
+  const record = readReadingProgressRecord(storage)
+  if (!record) return null
+
+  return resolveReadingProgressPage(record, location)
+}
+
+/**
+ * Safari throws instead of returning null when site data is blocked, so every
+ * caller has to tolerate having no storage at all.
+ */
+export function resolveReadingProgressStorage(): Storage | null {
+  if (typeof window === 'undefined') return null
+
+  try {
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
+
+function readReadingProgressRecord(
+  storage: Storage | null | undefined,
+): ReadingProgressRecord | null {
+  if (!storage) return null
+
+  return parseReadingProgressRecord(readStorageItem(storage, READING_PROGRESS_STORAGE_KEY, ''))
 }
 
 export function writeReadingProgress(

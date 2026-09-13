@@ -205,6 +205,19 @@ describe('readerCache', () => {
     })
   })
 
+  it('opens a freshly loaded novel on a requested page, bounded by its length', () => {
+    const novel = createNovel('1')
+    const updatedCache = { novelCache: {}, cacheOrder: [] }
+
+    const buildOnPage = (currentPage: number) =>
+      buildFreshReaderLoadState({ novel, pages, updatedCache, currentPage }).currentPage
+
+    expect(buildOnPage(2)).toBe(2)
+    expect(buildOnPage(9)).toBe(2)
+    expect(buildOnPage(0)).toBe(1)
+    expect(buildOnPage(Number.NaN)).toBe(1)
+  })
+
   it('builds the cleared reader load state', () => {
     expect(buildClearedReaderLoadState()).toEqual({
       novel: null,
