@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Updated React Router to 7.18.3 to address known open redirect and hydration deserialization issues.
 
 ### Added
+- The reader now remembers the scroll position inside a page, not just which page was open, so reloading after a browser crash returns to the exact spot — the difference that matters for single-page novels. The position is flushed when the tab is hidden or closed, which is the only signal iOS Safari gives before it discards a tab.
 - GitHub Actions workflows: `ci.yml` runs the backend and frontend checks (and fails when the committed `frontend/dist` is stale), and `deploy.yml` deploys `main` to Deno Deploy, then verifies the live `/api/version` matches what it uploaded.
 - `GET /api/version` reports the commit, branch and deployed-file fingerprint of the running deployment, and `GET /api/health` now includes the same revision as `version`.
 - `deno task deploy:check <url>` compares a live deployment with the local working tree and exits non-zero when they differ; `deno task deploy` records the metadata in `build-info.json` before uploading.
