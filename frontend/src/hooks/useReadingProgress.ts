@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useEventListener } from './useEventListener'
 import { restoreViewportOffset, scrollViewportToTopAfterNextFrame } from '../utils/pageScroll'
-import { readReadingProgressOffset, writeReadingProgress } from '../utils/readingProgress'
+import {
+  readReadingProgressOffset,
+  resolveReadingProgressStorage,
+  writeReadingProgress,
+} from '../utils/readingProgress'
 
 /**
  * Scroll offsets are written while scrolling, so they are batched; the delay is
@@ -19,6 +23,12 @@ export interface ReadingProgressViewport {
   cancelAnimationFrame: (handle: number) => void
   addEventListener: EventTarget['addEventListener']
   removeEventListener: EventTarget['removeEventListener']
+}
+
+interface ReadingProgressPoint {
+  novelId: string
+  page: number
+  offset: number
 }
 
 interface UseReadingProgressOptions {
@@ -43,15 +53,30 @@ export function useReadingProgress({
   novelId,
   currentPage,
   isReady,
-  storage = resolveDefaultStorage(),
+  storage = resolveReadingProgressStorage(),
   viewport = resolveDefaultViewport(),
   visibilityTarget = resolveDefaultVisibilityTarget(),
   getMaxOffset,
   saveDelayMs = READING_PROGRESS_SAVE_DELAY_MS,
 }: UseReadingProgressOptions) {
   const restoredNovelIdRef = useRef<string | null>(null)
-  const pendingRef = useRef<{ novelId: string; page: number; offset: number } | null>(null)
+  const pendingRef = useRef<ReadingProgressPoint | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const locationRef = useRef({ novelId, currentPage, isReady })
+  locationRef.current = { novelId, currentPage, isReady }
+
+  /**
+   * Falls back to the live scroll position when no scroll event is waiting to
+   * be written: iOS Safari can coalesce scroll events away and then hide the
+   * page, and losing the position is exactly what this hook exists to prevent.
+   */
+  const readCurrentPoint = useCallback((): ReadingProgressPoint | null => {
+    const { novelId: id, currentPage: page, isReady: ready } = locationRef.current
+
+    if (!id || !ready || !viewport || viewport.scrollY <= 0) return null
+
+    return { novelId: id, page, offset: viewport.scrollY }
+  }, [viewport])
 
   const flushProgress = useCallback(() => {
     if (timerRef.current !== null) {
@@ -59,12 +84,12 @@ export function useReadingProgress({
       timerRef.current = null
     }
 
-    const pending = pendingRef.current
-    if (!pending) return
+    const point = pendingRef.current ?? readCurrentPoint()
+    if (!point) return
 
     pendingRef.current = null
-    writeReadingProgress(storage, { ...pending, updatedAt: Date.now() })
-  }, [storage])
+    writeReadingProgress(storage, { ...point, updatedAt: Date.now() })
+  }, [storage, readCurrentPoint])
 
   const recordProgress = useCallback(() => {
     if (!novelId || !isReady || !viewport) return
@@ -105,18 +130,6 @@ export function useReadingProgress({
 
     return scrollViewportToTopAfterNextFrame({ target: viewport, behavior: 'auto' })
   }, [novelId, currentPage, isReady, viewport, storage, getMaxOffset])
-}
-
-function resolveDefaultStorage(): Storage | null {
-  if (typeof window === 'undefined') return null
-
-  try {
-    return window.localStorage
-  } catch {
-    // Safari throws when site data is blocked; reading then falls back to the
-    // top of the page instead of breaking the reader.
-    return null
-  }
 }
 
 function resolveDefaultViewport(): ReadingProgressViewport | null {

@@ -234,6 +234,39 @@ describe('useReadingProgress', () => {
     unmount()
   })
 
+  it('writes the visible position when the page is hidden without a scroll event', () => {
+    const viewport = new FakeViewport()
+    const storage = createMemoryStorage()
+
+    const { unmount } = renderReactElement(
+      <ProgressProbe novelId="novel-1" currentPage={1} isReady storage={storage} viewport={viewport} />,
+    )
+
+    act(() => {
+      viewport.scrollY = 1220
+      viewport.dispatchEvent(new Event('pagehide'))
+    })
+
+    expect(readReadingProgressOffset(storage, { novelId: 'novel-1', page: 1 })).toBe(1220)
+
+    unmount()
+  })
+
+  it('keeps a saved position when the reader is left without scrolling at all', () => {
+    const viewport = new FakeViewport()
+    const storage = createMemoryStorage(storedProgress('novel-1', 1, 900))
+
+    const { unmount } = renderReactElement(
+      <ProgressProbe novelId="novel-1" currentPage={1} isReady storage={storage} viewport={viewport} />,
+    )
+
+    viewport.scrollY = 0
+
+    unmount()
+
+    expect(readReadingProgressOffset(storage, { novelId: 'novel-1', page: 1 })).toBe(900)
+  })
+
   it('writes the pending position when the reader unmounts', () => {
     const viewport = new FakeViewport()
     const storage = createMemoryStorage()
