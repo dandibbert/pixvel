@@ -88,4 +88,12 @@ jobs:
             echo '```json'
             cat build-info.json
             echo '```'
+            echo
+            if [ -n "$DEPLOY_URL" ]; then
+              echo "Verified against $DEPLOY_URL/api/version."
+            else
+              echo "**Not verified.** Nothing checked that the live site serves this revision."
+              echo "Set the \`DEPLOY_URL\` repository variable (your site's base URL) to have every"
+              echo "deploy confirm it, or compare manually with \`deno task deploy:check <url>\`."
+            fi
           } >> "$GITHUB_STEP_SUMMARY"

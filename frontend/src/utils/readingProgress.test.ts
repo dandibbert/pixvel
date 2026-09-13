@@ -5,7 +5,9 @@ import {
   pruneReadingProgressRecord,
   READING_PROGRESS_STORAGE_KEY,
   readReadingProgressOffset,
+  readReadingProgressPage,
   resolveReadingProgressOffset,
+  resolveReadingProgressPage,
   updateReadingProgressRecord,
   writeReadingProgress,
 } from './readingProgress'
@@ -119,6 +121,29 @@ describe('readingProgress', () => {
     const record = { 'novel-1': { page: 1, offset: 0, updatedAt: 10 } }
 
     expect(resolveReadingProgressOffset(record, { novelId: 'novel-1', page: 1 })).toBeNull()
+  })
+
+  it('resolves the saved page so an evicted novel does not reopen at page one', () => {
+    const record = { 'novel-1': { page: 4, offset: 640, updatedAt: 10 } }
+
+    expect(resolveReadingProgressPage(record, { novelId: 'novel-1', totalPages: 6 })).toBe(4)
+    expect(resolveReadingProgressPage(record, { novelId: 'novel-1', totalPages: 4 })).toBe(4)
+  })
+
+  it('ignores a saved page that the novel no longer has', () => {
+    const record = { 'novel-1': { page: 4, offset: 640, updatedAt: 10 } }
+
+    expect(resolveReadingProgressPage(record, { novelId: 'novel-1', totalPages: 2 })).toBeNull()
+    expect(resolveReadingProgressPage(record, { novelId: 'novel-2', totalPages: 6 })).toBeNull()
+  })
+
+  it('reads the saved page through storage', () => {
+    const storage = createMemoryStorage()
+
+    writeReadingProgress(storage, { novelId: 'novel-1', page: 3, offset: 820, updatedAt: 99 })
+
+    expect(readReadingProgressPage(storage, { novelId: 'novel-1', totalPages: 5 })).toBe(3)
+    expect(readReadingProgressPage(null, { novelId: 'novel-1', totalPages: 5 })).toBeNull()
   })
 
   it('round-trips progress through storage', () => {

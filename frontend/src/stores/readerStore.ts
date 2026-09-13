@@ -8,6 +8,10 @@ import {
 } from '../utils/debouncedStorage'
 import { logErrorDescriptor } from '../utils/errorLog'
 import {
+  readReadingProgressPage,
+  resolveReadingProgressStorage,
+} from '../utils/readingProgress'
+import {
   buildClearedReaderLoadState,
   buildFreshReaderLoadState,
   buildNovelPages,
@@ -105,10 +109,16 @@ export const useReaderStore = create<ReaderState>()(
             pages,
           })
 
+          // A novel evicted from the cache above is still in the reading
+          // progress record, which is small enough to survive much longer.
           set(buildFreshReaderLoadState({
             novel: novelDetail,
             pages,
             updatedCache,
+            currentPage: readReadingProgressPage(resolveReadingProgressStorage(), {
+              novelId,
+              totalPages: pages.length,
+            }) ?? 1,
           }))
         } catch (error) {
           if (seq !== loadSeq) return
