@@ -15,7 +15,8 @@ All notable changes to this project will be documented in this file.
 - `deno task deploy:check <url>` compares a live deployment with the local working tree and exits non-zero when they differ; `deno task deploy` records the metadata in `build-info.json` before uploading.
 
 ### Changed
-- Verifying the deployment no longer depends on configuring `DEPLOY_URL`: the workflow falls back to the production domain Deno Deploy reports for the revision it just uploaded, and `DEPLOY_URL` is now only needed for custom domains.
+- Verifying the deployment no longer depends on configuring `DEPLOY_URL`, and can no longer be skipped: the workflow checks the production domain Deno Deploy reports for the uploaded revision, and falls back to the app's own `https://<app>.<org>.deno.net` when no domain points at it — the case where a locked Production timeline keeps serving older code. `DEPLOY_URL` is now only needed for custom domains.
+- `deno task deploy:check` explains a `404` from `/api/version` instead of failing with a stack trace: that host is running code from before version tracking existed, so it cannot be the revision being checked.
 - The deploy workflow reads `DENO_DEPLOY_ORG`, `DENO_DEPLOY_APP` and `DEPLOY_URL` from repository variables or secrets, so putting them on either tab works, and its preflight error now names the missing settings and where to add them.
 - The Deploy org and app are no longer pinned in `deno.json`: both must come from `DENO_DEPLOY_ORG` / `DENO_DEPLOY_APP` (`.env.deploy` locally, repository variables in CI). Deploying also no longer edits the project: `scripts/publish.sh` reverts the org/app the deploy CLI writes into `deno.json` and keeps the CLI's own dependencies out of `deno.lock`.
 - Raised the frontend build requirement to Node.js 20 or newer for React Router 7.

@@ -128,9 +128,9 @@ DENO_DEPLOY_APP=your_app
 
 工作流会先跑 `.github/workflows/ci.yml`（后端 `fmt` / `lint` / `check` / `test`，前端 `lint` / `test` / `build`），其中一步会校验提交的 `frontend/dist` 与源码重新构建的结果完全一致——构建产物是提交进仓库的，`deno deploy` 上传时又会跳过被 `.gitignore` 忽略的文件，所以产物过期必须在部署前拦下。检查通过后，部署步骤**原样上传当前 commit 的工作区**（不再重新构建），因此任何人 checkout 同一个 commit 都能用 `deno task deploy:check` 校验出 `Match`。
 
-部署完成后，工作流会轮询 `/api/version`，确认线上跑的确实是这次上传的那份代码，否则 job 失败。校验地址优先用 `DEPLOY_URL`；没配时用 Deno Deploy 在部署结果里报告的生产域名。
+部署完成后，工作流会轮询 `/api/version`，确认线上跑的确实是这次上传的那份代码，否则 job 失败。校验地址按 `DEPLOY_URL` → 部署结果里报告的生产域名 → `https://<app>.<org>.deno.net` 的顺序选取，所以这一步永远有目标，不存在"没法校验就放过"的情况。
 
-"上传成功"和"已经生效"是两回事：如果这个应用的 Production 没有绑定任何域名，上传照样会成功，而线上继续跑旧代码。工作流现在会把每个 revision 实际服务的域名打印出来，Production 为空时发出警告；如果既没有生产域名也没有 `DEPLOY_URL`，就没有任何东西能证明这次部署生效了，job 直接失败而不是报绿。
+"上传成功"和"已经生效"是两回事。Deno Deploy 只会为**当前生效的 revision** 报告生产域名：如果 Production 时间线被锁定（locked）在某个旧 revision 上，新上传的 revision 会进入 Production 时间线却不接管流量，上传照样成功，而线上继续跑旧代码。工作流会把每个 revision 实际服务的域名打印出来，Production 为空时发出警告，并继续拿应用自己的域名去校验——真跑着旧代码就会直接失败。遇到这种失败，去控制台打开应用的 Timelines → Production，解锁（或把最新 revision 锁为生效版本）。
 
 ### 确认线上跑的是哪个版本
 

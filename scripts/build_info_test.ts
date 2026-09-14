@@ -7,7 +7,7 @@ import {
   pickBranch,
   sha256Hex,
 } from "./build_info.ts";
-import { compareBuilds, resolveVersionUrl } from "./check_deployment.ts";
+import { compareBuilds, describeUnreadableVersion, resolveVersionUrl } from "./check_deployment.ts";
 
 Deno.test("sha256Hex produces the well known digest of an empty input", async () => {
   assertEquals(
@@ -66,6 +66,17 @@ Deno.test("resolveVersionUrl targets the version endpoint of a deployment", () =
   assertEquals(
     resolveVersionUrl("https://pixvel.deno.net/novels/123"),
     "https://pixvel.deno.net/api/version",
+  );
+});
+
+Deno.test("describeUnreadableVersion names a host that predates version tracking", () => {
+  const stale = describeUnreadableVersion("https://pixvel.deno.net/api/version", 404);
+  assertEquals(stale.includes("before the version endpoint existed"), true);
+  assertEquals(stale.includes("not the revision you are checking"), true);
+
+  assertEquals(
+    describeUnreadableVersion("https://pixvel.deno.net/api/version", 503).includes("503"),
+    true,
   );
 });
 

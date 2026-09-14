@@ -79,19 +79,21 @@ jobs:
           echo "Domains reported for this revision:"
           jq -r '.timelines[]? | "  \(.partition): \(if (.domains | length) == 0 then "(none)" else (.domains | join(", ")) end)"' "$result"
 
-          if [ -z "$production_url" ]; then
-            echo "::warning::This revision was uploaded but no production domain serves it, so the live site still runs the previous code. Check that DENO_DEPLOY_APP names the app your site actually uses, and that its Production timeline has a domain attached in the Deno Deploy dashboard."
+          if [ -n "$DEPLOY_URL" ]; then
+            verify_url="$DEPLOY_URL"
+          elif [ -n "$production_url" ]; then
+            verify_url="$production_url"
+          else
+            # Deno Deploy always serves an app at this hostname, so the check
+            # below still has a target and can report what the site really runs.
+            verify_url="https://${DENO_DEPLOY_APP}.${DENO_DEPLOY_ORG}.deno.net"
+            echo "::warning::No production domain points at this revision, so it is not the active revision on the Production timeline. Checking ${verify_url} anyway."
           fi
 
-          echo "VERIFY_URL=${DEPLOY_URL:-$production_url}" >> "$GITHUB_ENV"
+          echo "VERIFY_URL=$verify_url" >> "$GITHUB_ENV"
 
       - name: Verify the deployment serves this revision
         run: |
-          if [ -z "$VERIFY_URL" ]; then
-            echo "::error::Nothing can confirm this deploy went live: Deno Deploy reported no production domain, and no DEPLOY_URL repository variable is set. Set DEPLOY_URL to your site's base URL so every deploy is checked against it."
-            exit 1
-          fi
-
           for attempt in 1 2 3 4 5; do
             if deno task deploy:check "$VERIFY_URL"; then
               exit 0
@@ -99,7 +101,7 @@ jobs:
             echo "Deployment not live yet (attempt $attempt); retrying in 15s"
             sleep 15
           done
-          echo "::error::$VERIFY_URL does not serve the revision that was just uploaded."
+          echo "::error::$VERIFY_URL still serves older code. The upload succeeded, so the revision exists but never became the active revision of the timeline that owns this domain: in the Deno Deploy dashboard open the app, go to Timelines -> Production, and unlock it (or lock it to this revision)."
           exit 1
 
       - name: Summarize the deployment
@@ -115,7 +117,6 @@ jobs:
             if [ -n "${VERIFY_URL:-}" ]; then
               echo "Checked against ${VERIFY_URL}/api/version."
             else
-              echo "**Nothing reached production.** Deno Deploy reported no production domain for"
-              echo "this revision, so the live site still serves the previous code."
+              echo "The upload never finished, so nothing was checked."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
