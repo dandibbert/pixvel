@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - `deno task deploy:check <url>` compares a live deployment with the local working tree and exits non-zero when they differ; `deno task deploy` records the metadata in `build-info.json` before uploading.
 
 ### Changed
+- Verifying the deployment no longer depends on configuring `DEPLOY_URL`: the workflow falls back to the production domain Deno Deploy reports for the revision it just uploaded, and `DEPLOY_URL` is now only needed for custom domains.
 - The deploy workflow reads `DENO_DEPLOY_ORG`, `DENO_DEPLOY_APP` and `DEPLOY_URL` from repository variables or secrets, so putting them on either tab works, and its preflight error now names the missing settings and where to add them.
 - The Deploy org and app are no longer pinned in `deno.json`: both must come from `DENO_DEPLOY_ORG` / `DENO_DEPLOY_APP` (`.env.deploy` locally, repository variables in CI). Deploying also no longer edits the project: `scripts/publish.sh` reverts the org/app the deploy CLI writes into `deno.json` and keeps the CLI's own dependencies out of `deno.lock`.
 - Raised the frontend build requirement to Node.js 20 or newer for React Router 7.
@@ -22,6 +23,7 @@ All notable changes to this project will be documented in this file.
 - Author works now use numbered, URL-backed pagination with a bounded local cache, so refreshes restore the current page without refetching fresh cached data.
 
 ### Fixed
+- A deploy that never reached production no longer reports success. Uploading a revision and putting it in front of users are separate things: when no production domain serves the revision, the site keeps running the previous code. The workflow now reads the domains Deno Deploy reports for the revision, warns when production has none, and fails outright when nothing can confirm the deploy went live.
 - Reopening a novel that had been pushed out of the reader's five-novel cache no longer drops back to page one at the top: the page is also kept in the small reading-progress record, which survives far longer than the cached novel text.
 - The reading position is now flushed from the live scroll offset when the tab is hidden or closed, instead of only from the last `scroll` event. iOS Safari can coalesce those events away and then discard the tab, which lost the position entirely.
 - Deploying no longer fails on Deno 2.9.x, where the `deno deploy` subcommand forwards every flag twice and then rejects its own arguments; `scripts/publish.sh` detects this and runs the identical CLI from JSR instead.

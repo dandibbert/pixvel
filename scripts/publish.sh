@@ -20,6 +20,16 @@ if [ -n "${CI:-}" ]; then
   args+=(--non-interactive)
 fi
 
+# Uploading is not the same as going live: the CLI reports the domains the
+# revision ended up serving on, and that list is empty when nothing reached
+# production. Only the JSON output exposes it, so ask for it whenever the
+# caller wants the result captured. Keep the path outside the repository —
+# an extra file in the working tree changes the tree hash that
+# `deno task deploy:check` compares against.
+if [ -n "${DEPLOY_RESULT_PATH:-}" ]; then
+  args+=(--json)
+fi
+
 # Deploying must not edit the project itself: the CLI writes the resolved org
 # and app back into deno.json, and running it from JSR would record its own
 # dependencies in deno.lock. Either change puts the working tree out of sync
@@ -51,9 +61,18 @@ trap restore_project_files EXIT
 # subcommand rejects its own arguments ("can only occur once"). Probing with
 # --version tells the two behaviours apart; when it fails, the identical CLI is
 # run straight from JSR instead.
-if deno deploy --version >/dev/null 2>&1; then
-  deno deploy "${args[@]}" "${@:-.}"
+run_deploy_cli() {
+  if deno deploy --version >/dev/null 2>&1; then
+    deno deploy "${args[@]}" "${@:-.}"
+  else
+    # stderr: stdout carries the JSON result when --json is in use.
+    echo "note: 'deno deploy' cannot parse its own flags on this Deno version; using $DEPLOY_CLI_MODULE" >&2
+    deno run --allow-all --no-lock "$DEPLOY_CLI_MODULE" "${args[@]}" "${@:-.}"
+  fi
+}
+
+if [ -n "${DEPLOY_RESULT_PATH:-}" ]; then
+  run_deploy_cli "$@" | tee "$DEPLOY_RESULT_PATH"
 else
-  echo "note: 'deno deploy' cannot parse its own flags on this Deno version; using $DEPLOY_CLI_MODULE"
-  deno run --allow-all --no-lock "$DEPLOY_CLI_MODULE" "${args[@]}" "${@:-.}"
+  run_deploy_cli "$@"
 fi

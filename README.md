@@ -120,7 +120,7 @@ DENO_DEPLOY_APP=your_app
 | Secret | `DENO_DEPLOY_TOKEN` | 必需 | 在 Deno Deploy 控制台 Account → Access Tokens 生成；这是唯一的凭据 |
 | Variable | `DENO_DEPLOY_ORG` | 必需 | 组织 slug，仓库里不再硬编码 |
 | Variable | `DENO_DEPLOY_APP` | 必需 | 应用名；非交互模式下 CLI 不会自动推断 |
-| Variable | `DEPLOY_URL` | 可选 | 设置后部署结束会自动校验线上版本 |
+| Variable | `DEPLOY_URL` | 可选 | 自定义域名时填；留空则用 Deno Deploy 报告的生产域名 |
 
 添加位置是 Settings → Secrets and variables → Actions：token 放 **Secrets** 标签页，org / app / URL 放 **Variables** 标签页。工作流两个标签页都会读，所以放错了也能跑；但必须是仓库级（Repository）配置，只加在某个 Environment 下的不会被读到。
 
@@ -128,7 +128,9 @@ DENO_DEPLOY_APP=your_app
 
 工作流会先跑 `.github/workflows/ci.yml`（后端 `fmt` / `lint` / `check` / `test`，前端 `lint` / `test` / `build`），其中一步会校验提交的 `frontend/dist` 与源码重新构建的结果完全一致——构建产物是提交进仓库的，`deno deploy` 上传时又会跳过被 `.gitignore` 忽略的文件，所以产物过期必须在部署前拦下。检查通过后，部署步骤**原样上传当前 commit 的工作区**（不再重新构建），因此任何人 checkout 同一个 commit 都能用 `deno task deploy:check` 校验出 `Match`。
 
-配置了 `DEPLOY_URL` 时，部署完成后工作流会轮询 `/api/version`，确认线上跑的确实是这次上传的那份代码，否则 job 失败。
+部署完成后，工作流会轮询 `/api/version`，确认线上跑的确实是这次上传的那份代码，否则 job 失败。校验地址优先用 `DEPLOY_URL`；没配时用 Deno Deploy 在部署结果里报告的生产域名。
+
+"上传成功"和"已经生效"是两回事：如果这个应用的 Production 没有绑定任何域名，上传照样会成功，而线上继续跑旧代码。工作流现在会把每个 revision 实际服务的域名打印出来，Production 为空时发出警告；如果既没有生产域名也没有 `DEPLOY_URL`，就没有任何东西能证明这次部署生效了，job 直接失败而不是报绿。
 
 ### 确认线上跑的是哪个版本
 
