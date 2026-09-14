@@ -64,19 +64,42 @@ jobs:
         run: deno task build-info
 
       - name: Deploy
+        env:
+          DEPLOY_RESULT_PATH: ${{ runner.temp }}/deploy-result.json
         run: bash scripts/publish.sh
 
-      - name: Verify the deployment serves this revision
-        if: ${{ env.DEPLOY_URL != '' }}
+      # Uploading a revision and putting it in front of users are two different
+      # things: when no production domain serves the revision, the deploy still
+      # succeeds and the site keeps running the previous code.
+      - name: Resolve where the revision went live
         run: |
+          result="${{ runner.temp }}/deploy-result.json"
+          production_url="$(jq -r '.productionUrl // empty' "$result")"
+
+          echo "Domains reported for this revision:"
+          jq -r '.timelines[]? | "  \(.partition): \(if (.domains | length) == 0 then "(none)" else (.domains | join(", ")) end)"' "$result"
+
+          if [ -z "$production_url" ]; then
+            echo "::warning::This revision was uploaded but no production domain serves it, so the live site still runs the previous code. Check that DENO_DEPLOY_APP names the app your site actually uses, and that its Production timeline has a domain attached in the Deno Deploy dashboard."
+          fi
+
+          echo "VERIFY_URL=${DEPLOY_URL:-$production_url}" >> "$GITHUB_ENV"
+
+      - name: Verify the deployment serves this revision
+        run: |
+          if [ -z "$VERIFY_URL" ]; then
+            echo "::error::Nothing can confirm this deploy went live: Deno Deploy reported no production domain, and no DEPLOY_URL repository variable is set. Set DEPLOY_URL to your site's base URL so every deploy is checked against it."
+            exit 1
+          fi
+
           for attempt in 1 2 3 4 5; do
-            if deno task deploy:check "$DEPLOY_URL"; then
+            if deno task deploy:check "$VERIFY_URL"; then
               exit 0
             fi
             echo "Deployment not live yet (attempt $attempt); retrying in 15s"
             sleep 15
           done
-          echo "::error::$DEPLOY_URL does not serve the revision that was just uploaded."
+          echo "::error::$VERIFY_URL does not serve the revision that was just uploaded."
           exit 1
 
       - name: Summarize the deployment
@@ -89,11 +112,10 @@ jobs:
             cat build-info.json
             echo '```'
             echo
-            if [ -n "$DEPLOY_URL" ]; then
-              echo "Verified against $DEPLOY_URL/api/version."
+            if [ -n "${VERIFY_URL:-}" ]; then
+              echo "Checked against ${VERIFY_URL}/api/version."
             else
-              echo "**Not verified.** Nothing checked that the live site serves this revision."
-              echo "Set the \`DEPLOY_URL\` repository variable (your site's base URL) to have every"
-              echo "deploy confirm it, or compare manually with \`deno task deploy:check <url>\`."
+              echo "**Nothing reached production.** Deno Deploy reported no production domain for"
+              echo "this revision, so the live site still serves the previous code."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
