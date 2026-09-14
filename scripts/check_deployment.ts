@@ -10,10 +10,33 @@ export function resolveVersionUrl(baseUrl: string): string {
   return new URL("/api/version", baseUrl).toString();
 }
 
+/**
+ * A 404 is its own answer: every build that reports a version serves this
+ * endpoint, so a host without it is running code older than version tracking
+ * and therefore cannot be the revision being checked.
+ */
+export function describeUnreadableVersion(url: string, status: number): string {
+  if (status === 404) {
+    return `${url} responded with 404, so that host runs code from before the version endpoint existed. ` +
+      "It is not the revision you are checking.";
+  }
+  return `${url} responded with ${status}, so the deployed version could not be read.`;
+}
+
+export class UnreadableVersionError extends Error {
+  constructor(readonly status: number, url: string) {
+    super(describeUnreadableVersion(url, status));
+    this.name = "UnreadableVersionError";
+  }
+}
+
 export async function fetchDeployedBuildInfo(baseUrl: string): Promise<BuildInfo> {
-  const response = await fetch(resolveVersionUrl(baseUrl), { cache: "no-store" });
+  const url = resolveVersionUrl(baseUrl);
+  const response = await fetch(url, { cache: "no-store" });
   if (!response.ok) {
-    throw new Error(`${resolveVersionUrl(baseUrl)} responded with ${response.status}`);
+    // The body is never used, and an unread body keeps the process alive.
+    await response.body?.cancel();
+    throw new UnreadableVersionError(response.status, url);
   }
 
   return parseBuildInfo(await response.text());
@@ -44,7 +67,17 @@ if (import.meta.main) {
     Deno.exit(2);
   }
 
-  const deployed = await fetchDeployedBuildInfo(baseUrl);
+  let deployed: BuildInfo;
+  try {
+    deployed = await fetchDeployedBuildInfo(baseUrl);
+  } catch (error) {
+    if (error instanceof UnreadableVersionError) {
+      console.error(error.message);
+      Deno.exit(error.status === 404 ? 1 : 2);
+    }
+    throw error;
+  }
+
   const local = await collectBuildInfo();
 
   printBuild("deployed", deployed);

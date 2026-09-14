@@ -25,18 +25,27 @@ Deno.test("the deploy workflow never skips verifying the live deployment", async
   assertEquals(stepBody.includes("deno task deploy:check"), true);
 });
 
-Deno.test("the deploy workflow fails when it has no URL to verify", async () => {
+/**
+ * Deno Deploy only reports a production domain for the revision it made
+ * active, so a pinned timeline leaves `productionUrl` empty. Falling back to
+ * the app's own hostname keeps that case checkable instead of unverified.
+ */
+Deno.test("the deploy workflow always has a URL to verify", async () => {
   const workflow = await readWorkflow();
 
-  assertEquals(workflow.includes('if [ -z "$VERIFY_URL" ]'), true);
-  assertEquals(workflow.includes("::error::Nothing can confirm this deploy went live"), true);
+  assertEquals(
+    workflow.includes('verify_url="https://${DENO_DEPLOY_APP}.${DENO_DEPLOY_ORG}.deno.net"'),
+    true,
+  );
+  assertEquals(workflow.includes('if [ -z "$VERIFY_URL" ]'), false);
 });
 
 Deno.test("the deploy workflow reports a revision that never reached production", async () => {
   const workflow = await readWorkflow();
 
   assertEquals(workflow.includes("jq -r '.productionUrl // empty'"), true);
-  assertEquals(workflow.includes("::warning::This revision was uploaded but no production"), true);
+  assertEquals(workflow.includes("::warning::No production domain points at this revision"), true);
+  assertEquals(workflow.includes("Timelines -> Production"), true);
 });
 
 Deno.test("the deploy result is captured outside the repository", async () => {
